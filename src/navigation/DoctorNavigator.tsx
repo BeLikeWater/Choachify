@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, Alert, ScrollView, SafeAreaView } from 'react-native';
+import { commonStyles } from '../styles/commonStyles';
 import DashboardScreen from '../screens/DashboardScreen';
 import PatientListScreen from '../screens/PatientListScreen';
 import AddPatientScreen from '../screens/AddPatientScreen';
@@ -360,19 +361,19 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
   };
 
   return (
-    <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
+    <SafeAreaView style={[commonStyles.safeArea, isDarkMode && commonStyles.darkSafeArea]}>
       {/* Header */}
-      <View style={[styles.header, isDarkMode && styles.darkHeader]}>
+      <View style={[commonStyles.headerRow, isDarkMode && styles.darkHeader]}>
         <View style={styles.userInfo}>
-          <Text style={[styles.welcomeText, isDarkMode && styles.darkSubtitle]}>
+          <Text style={[commonStyles.caption, isDarkMode && commonStyles.darkSubtitle]}>
             Hoş geldiniz,
           </Text>
-          <Text style={[styles.userName, isDarkMode && styles.darkText]}>
+          <Text style={[commonStyles.title, isDarkMode && commonStyles.darkText]}>
             Dr. {user.firstName} {user.lastName}
           </Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutButtonText}>🚪 Çıkış</Text>
+        <TouchableOpacity onPress={handleLogout} style={commonStyles.buttonDanger}>
+          <Text style={commonStyles.buttonText}>🚪 Çıkış</Text>
         </TouchableOpacity>
       </View>
 
@@ -399,37 +400,37 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             onAddAppointment={handleAddAppointmentFromList}
           />
         ) : currentTab === 'measurements' ? (
-          <View style={styles.measurementsTab}>
-            <View style={styles.measurementsHeader}>
-              <Text style={[styles.measurementsTitle, isDarkMode && styles.darkText]}>
+          <View style={[commonStyles.container, isDarkMode && commonStyles.darkContainer]}>
+            <View style={commonStyles.header}>
+              <Text style={[commonStyles.titleLarge, isDarkMode && commonStyles.darkText]}>
                 📊 Ölçüm Takibi
               </Text>
-              <Text style={[styles.measurementsSubtitle, isDarkMode && styles.darkSubtitle]}>
+              <Text style={[commonStyles.subtitle, isDarkMode && commonStyles.darkSubtitle]}>
                 Hasta seçin veya yeni ölçüm ekleyin
               </Text>
             </View>
             
             <TouchableOpacity 
-              style={styles.addMeasurementButton}
+              style={commonStyles.buttonSuccess}
               onPress={handleAddMeasurementFromList}
             >
-              <Text style={styles.addMeasurementButtonText}>➕ Yeni Ölçüm Ekle</Text>
+              <Text style={commonStyles.buttonText}>➕ Yeni Ölçüm Ekle</Text>
             </TouchableOpacity>
 
-            <ScrollView style={styles.patientGrid}>
+            <ScrollView style={commonStyles.listContainer}>
               {patients.map((patient) => (
                 <TouchableOpacity
                   key={patient.id}
-                  style={[styles.patientMeasurementCard, isDarkMode && styles.darkCard]}
+                  style={[commonStyles.card, isDarkMode && styles.darkCard]}
                   onPress={() => handleViewMeasurements(patient)}
                 >
-                  <Text style={[styles.patientMeasurementName, isDarkMode && styles.darkText]}>
+                  <Text style={[commonStyles.title, isDarkMode && commonStyles.darkText]}>
                     {patient.firstName} {patient.lastName}
                   </Text>
-                  <Text style={[styles.patientMeasurementInfo, isDarkMode && styles.darkSubtitle]}>
+                  <Text style={[commonStyles.caption, isDarkMode && commonStyles.darkSubtitle]}>
                     👤 {patient.age} yaşında • {patient.gender}
                   </Text>
-                  <Text style={[styles.viewMeasurementsText, isDarkMode && styles.darkSubtitle]}>
+                  <Text style={[styles.viewMeasurementsText, isDarkMode && commonStyles.darkSubtitle]}>
                     📊 Ölçümleri Görüntüle
                   </Text>
                 </TouchableOpacity>
@@ -437,37 +438,37 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             </ScrollView>
           </View>
         ) : (
-          <View style={styles.measurementsTab}>
-            <View style={styles.measurementsHeader}>
-              <Text style={[styles.measurementsTitle, isDarkMode && styles.darkText]}>
+          <View style={[commonStyles.container, isDarkMode && commonStyles.darkContainer]}>
+            <View style={commonStyles.header}>
+              <Text style={[commonStyles.titleLarge, isDarkMode && commonStyles.darkText]}>
                 🥗 Diyet Takibi
               </Text>
-              <Text style={[styles.measurementsSubtitle, isDarkMode && styles.darkSubtitle]}>
+              <Text style={[commonStyles.subtitle, isDarkMode && commonStyles.darkSubtitle]}>
                 Hasta seçin veya yeni diyet planı ekleyin
               </Text>
             </View>
             
             <TouchableOpacity 
-              style={[styles.addMeasurementButton, { backgroundColor: '#fd7e14' }]}
+              style={[commonStyles.buttonPrimary, { backgroundColor: '#fd7e14' }]}
               onPress={handleAddDietPlanFromList}
             >
-              <Text style={styles.addMeasurementButtonText}>➕ Yeni Diyet Planı Ekle</Text>
+              <Text style={commonStyles.buttonText}>➕ Yeni Diyet Planı Ekle</Text>
             </TouchableOpacity>
 
-            <ScrollView style={styles.patientGrid}>
+            <ScrollView style={commonStyles.listContainer}>
               {patients.map((patient) => (
                 <TouchableOpacity
                   key={patient.id}
-                  style={[styles.patientMeasurementCard, isDarkMode && styles.darkCard]}
+                  style={[commonStyles.card, isDarkMode && styles.darkCard]}
                   onPress={() => handleViewDietPlans(patient)}
                 >
-                  <Text style={[styles.patientMeasurementName, isDarkMode && styles.darkText]}>
+                  <Text style={[commonStyles.title, isDarkMode && commonStyles.darkText]}>
                     {patient.firstName} {patient.lastName}
                   </Text>
-                  <Text style={[styles.patientMeasurementInfo, isDarkMode && styles.darkSubtitle]}>
+                  <Text style={[commonStyles.caption, isDarkMode && commonStyles.darkSubtitle]}>
                     👤 {patient.age} yaşında • {patient.gender}
                   </Text>
-                  <Text style={[styles.viewMeasurementsText, { color: '#fd7e14' }, isDarkMode && styles.darkSubtitle]}>
+                  <Text style={[styles.viewMeasurementsText, { color: '#fd7e14' }, isDarkMode && commonStyles.darkSubtitle]}>
                     🥗 Diyet Planlarını Görüntüle
                   </Text>
                 </TouchableOpacity>
@@ -478,12 +479,11 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
       </View>
 
       {/* Bottom Tab Bar */}
-      <View style={[styles.tabBar, isDarkMode && styles.darkTabBar]}>
+      <View style={[commonStyles.tabContainer, { flexDirection: 'row', backgroundColor: '#ffffff', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingBottom: 20, paddingTop: 10 }, isDarkMode && styles.darkTabBar]}>
         <TouchableOpacity
           style={[
-            styles.tabButton,
-            currentTab === 'dashboard' && styles.activeTab,
-            currentTab === 'dashboard' && isDarkMode && styles.darkActiveTab,
+            commonStyles.tabButton,
+            currentTab === 'dashboard' && commonStyles.tabButtonActive,
           ]}
           onPress={() => setCurrentTab('dashboard')}
         >
@@ -494,9 +494,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             📊
           </Text>
           <Text style={[
-            styles.tabLabel,
-            isDarkMode && styles.darkTabLabel,
-            currentTab === 'dashboard' && styles.activeTabText,
+            commonStyles.tabButtonText,
+            currentTab === 'dashboard' && commonStyles.tabButtonTextActive,
           ]}>
             Dashboard
           </Text>
@@ -504,9 +503,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
 
         <TouchableOpacity
           style={[
-            styles.tabButton,
-            currentTab === 'patients' && styles.activeTab,
-            currentTab === 'patients' && isDarkMode && styles.darkActiveTab,
+            commonStyles.tabButton,
+            currentTab === 'patients' && commonStyles.tabButtonActive,
           ]}
           onPress={() => setCurrentTab('patients')}
         >
@@ -517,9 +515,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             👥
           </Text>
           <Text style={[
-            styles.tabLabel,
-            isDarkMode && styles.darkTabLabel,
-            currentTab === 'patients' && styles.activeTabText,
+            commonStyles.tabButtonText,
+            currentTab === 'patients' && commonStyles.tabButtonTextActive,
           ]}>
             Hastalar
           </Text>
@@ -527,9 +524,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
 
         <TouchableOpacity
           style={[
-            styles.tabButton,
-            currentTab === 'appointments' && styles.activeTab,
-            currentTab === 'appointments' && isDarkMode && styles.darkActiveTab,
+            commonStyles.tabButton,
+            currentTab === 'appointments' && commonStyles.tabButtonActive,
           ]}
           onPress={() => setCurrentTab('appointments')}
         >
@@ -540,9 +536,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             📅
           </Text>
           <Text style={[
-            styles.tabLabel,
-            isDarkMode && styles.darkTabLabel,
-            currentTab === 'appointments' && styles.activeTabText,
+            commonStyles.tabButtonText,
+            currentTab === 'appointments' && commonStyles.tabButtonTextActive,
           ]}>
             Randevular
           </Text>
@@ -551,9 +546,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
 
         <TouchableOpacity
           style={[
-            styles.tabButton,
-            currentTab === 'measurements' && styles.activeTab,
-            currentTab === 'measurements' && isDarkMode && styles.darkActiveTab,
+            commonStyles.tabButton,
+            currentTab === 'measurements' && commonStyles.tabButtonActive,
           ]}
           onPress={() => setCurrentTab('measurements')}
         >
@@ -564,9 +558,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             📊
           </Text>
           <Text style={[
-            styles.tabLabel,
-            isDarkMode && styles.darkTabLabel,
-            currentTab === 'measurements' && styles.activeTabText,
+            commonStyles.tabButtonText,
+            currentTab === 'measurements' && commonStyles.tabButtonTextActive,
           ]}>
             Ölçümler
           </Text>
@@ -574,9 +567,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
 
         <TouchableOpacity
           style={[
-            styles.tabButton,
-            currentTab === 'diets' && styles.activeTab,
-            currentTab === 'diets' && isDarkMode && styles.darkActiveTab,
+            commonStyles.tabButton,
+            currentTab === 'diets' && commonStyles.tabButtonActive,
           ]}
           onPress={() => setCurrentTab('diets')}
         >
@@ -587,9 +579,8 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             🥗
           </Text>
           <Text style={[
-            styles.tabLabel,
-            isDarkMode && styles.darkTabLabel,
-            currentTab === 'diets' && styles.activeTabText,
+            commonStyles.tabButtonText,
+            currentTab === 'diets' && commonStyles.tabButtonTextActive,
           ]}>
             Diyet
           </Text>
@@ -621,180 +612,43 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
   };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  darkContainer: {
-    backgroundColor: '#1a1a1a',
-  },
   content: {
     flex: 1,
   },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
-    paddingBottom: 20,
-    paddingTop: 10,
-  },
+  
   darkTabBar: {
-    backgroundColor: '#2d2d2d',
-    borderTopColor: '#444',
+    backgroundColor: '#262626',
+    borderTopColor: '#404040',
   },
-  tabButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginHorizontal: 8,
-  },
-  activeTab: {
-    backgroundColor: '#e3f2fd',
-  },
-  darkActiveTab: {
-    backgroundColor: '#1565c0',
-  },
+  
   tabIcon: {
-    fontSize: 24,
+    fontSize: 20,
     marginBottom: 4,
+    opacity: 0.7,
   },
-  tabLabel: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '500',
-  },
-  darkTabLabel: {
-    color: '#adb5bd',
-  },
+  
   activeTabText: {
-    color: '#1976d2',
+    color: '#6366f1',
     fontWeight: '600',
   },
-  measurementsTab: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  measurementsHeader: {
-    padding: 20,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  measurementsTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 8,
-  },
-  measurementsSubtitle: {
-    fontSize: 16,
-    color: '#6c757d',
-    textAlign: 'center',
-  },
-  addMeasurementButton: {
-    backgroundColor: '#28a745',
-    marginHorizontal: 20,
-    marginVertical: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  addMeasurementButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  patientGrid: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  patientMeasurementCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  patientMeasurementName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 8,
-  },
-  patientMeasurementInfo: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginBottom: 8,
-  },
+  
   viewMeasurementsText: {
     fontSize: 14,
-    color: '#28a745',
-    fontWeight: '600',
+    color: '#10b981',
+    fontWeight: '500',
     textAlign: 'center',
+    marginTop: 4,
   },
-});
-
-// Header styles ekleyelim
-const headerStyles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+  
+  darkCard: {
+    backgroundColor: '#262626',
   },
+  
   darkHeader: {
-    backgroundColor: '#2d2d2d',
-    borderBottomColor: '#444',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: '#6c757d',
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212529',
-  },
-  darkText: {
-    color: '#ffffff',
-  },
-  darkSubtitle: {
-    color: '#adb5bd',
-  },
-  logoutButton: {
-    backgroundColor: '#dc3545',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    backgroundColor: '#262626',
+    borderBottomColor: '#404040',
   },
 });
 
-// Ana styles'a header stilleri ekle
-styles.header = headerStyles.header;
-styles.darkHeader = headerStyles.darkHeader;
-styles.userInfo = headerStyles.userInfo;
-styles.welcomeText = headerStyles.welcomeText;
-styles.userName = headerStyles.userName;
-styles.darkText = headerStyles.darkText;
-styles.darkSubtitle = headerStyles.darkSubtitle;
-styles.logoutButton = headerStyles.logoutButton;
-styles.logoutButtonText = headerStyles.logoutButtonText;
 
 export default DoctorNavigator;

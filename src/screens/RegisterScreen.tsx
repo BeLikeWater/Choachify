@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { AuthService } from '../services/authService';
 import { RegisterData, User } from '../types';
+import { commonStyles } from '../styles/commonStyles';
 
 interface RegisterScreenProps {
   onRegisterSuccess: (user: User) => void;
@@ -99,33 +100,33 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={[styles.container, isDarkMode && styles.darkContainer]}>
+    <SafeAreaView style={[commonStyles.safeArea, isDarkMode && commonStyles.darkSafeArea]}>
       <KeyboardAvoidingView 
-        style={styles.flex}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView contentContainerStyle={commonStyles.scrollContent}>
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, isDarkMode && styles.darkText]}>
+            <Text style={[commonStyles.titleLarge, isDarkMode && commonStyles.darkText]}>
               📝 Kayıt Ol
             </Text>
-            <Text style={[styles.subtitle, isDarkMode && styles.darkSubtitle]}>
+            <Text style={[commonStyles.subtitle, isDarkMode && commonStyles.darkSubtitle]}>
               Yeni hesap oluşturun
             </Text>
           </View>
 
           {/* Register Form */}
-          <View style={styles.form}>
+          <View style={commonStyles.form}>
             {/* Basic Info */}
-            <View style={styles.row}>
+            <View style={commonStyles.row}>
               <View style={styles.halfInput}>
-                <Text style={[styles.label, isDarkMode && styles.darkText]}>
+                <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
                   Ad *
                 </Text>
                 <TextInput
-                  style={[styles.input, isDarkMode && styles.darkInput]}
+                  style={[commonStyles.input, isDarkMode && commonStyles.darkInput]}
                   value={formData.firstName}
                   onChangeText={(text) => setFormData({...formData, firstName: text})}
                   placeholder="Adınız"
@@ -135,11 +136,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               </View>
               
               <View style={styles.halfInput}>
-                <Text style={[styles.label, isDarkMode && styles.darkText]}>
+                <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
                   Soyad *
                 </Text>
                 <TextInput
-                  style={[styles.input, isDarkMode && styles.darkInput]}
+                  style={[commonStyles.input, isDarkMode && commonStyles.darkInput]}
                   value={formData.lastName}
                   onChangeText={(text) => setFormData({...formData, lastName: text})}
                   placeholder="Soyadınız"
@@ -149,12 +150,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, isDarkMode && styles.darkText]}>
+            <View style={commonStyles.inputGroup}>
+              <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
                 Email *
               </Text>
               <TextInput
-                style={[styles.input, isDarkMode && styles.darkInput]}
+                style={[commonStyles.input, isDarkMode && commonStyles.darkInput]}
                 value={formData.email}
                 onChangeText={(text) => setFormData({...formData, email: text.trim()})}
                 placeholder="ornek@email.com"
@@ -166,12 +167,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, isDarkMode && styles.darkText]}>
+            <View style={commonStyles.inputGroup}>
+              <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
                 Şifre *
               </Text>
               <TextInput
-                style={[styles.input, isDarkMode && styles.darkInput]}
+                style={[commonStyles.input, isDarkMode && commonStyles.darkInput]}
                 value={formData.password}
                 onChangeText={(text) => setFormData({...formData, password: text})}
                 placeholder="En az 6 karakter"
@@ -182,25 +183,22 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             </View>
 
             {/* User Type Selection */}
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, isDarkMode && styles.darkText]}>
+            <View style={commonStyles.inputGroup}>
+              <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
                 Kullanıcı Tipi *
               </Text>
-              <View style={styles.userTypeContainer}>
+              <View style={commonStyles.tabContainer}>
                 <TouchableOpacity
                   style={[
-                    styles.userTypeButton,
-                    formData.userType === 'doktor' && styles.userTypeButtonActive,
-                    isDarkMode && styles.darkUserTypeButton,
-                    formData.userType === 'doktor' && isDarkMode && styles.darkUserTypeButtonActive,
+                    commonStyles.tabButton,
+                    formData.userType === 'doktor' && commonStyles.tabButtonActive,
                   ]}
                   onPress={() => setFormData({...formData, userType: 'doktor'})}
                   disabled={loading}
                 >
                   <Text style={[
-                    styles.userTypeButtonText,
-                    formData.userType === 'doktor' && styles.userTypeButtonTextActive,
-                    isDarkMode && styles.darkText,
+                    commonStyles.tabButtonText,
+                    formData.userType === 'doktor' && commonStyles.tabButtonTextActive,
                   ]}>
                     👨‍⚕️ Doktor
                   </Text>
@@ -208,18 +206,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                 
                 <TouchableOpacity
                   style={[
-                    styles.userTypeButton,
-                    formData.userType === 'hasta' && styles.userTypeButtonActive,
-                    isDarkMode && styles.darkUserTypeButton,
-                    formData.userType === 'hasta' && isDarkMode && styles.darkUserTypeButtonActive,
+                    commonStyles.tabButton,
+                    formData.userType === 'hasta' && commonStyles.tabButtonActive,
                   ]}
                   onPress={() => setFormData({...formData, userType: 'hasta'})}
                   disabled={loading}
                 >
                   <Text style={[
-                    styles.userTypeButtonText,
-                    formData.userType === 'hasta' && styles.userTypeButtonTextActive,
-                    isDarkMode && styles.darkText,
+                    commonStyles.tabButtonText,
+                    formData.userType === 'hasta' && commonStyles.tabButtonTextActive,
                   ]}>
                     👤 Hasta
                   </Text>
@@ -230,12 +225,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
             {/* Doctor Specific Fields */}
             {formData.userType === 'doktor' && (
               <>
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.label, isDarkMode && styles.darkText]}>
+                <View style={commonStyles.inputGroup}>
+                  <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
                     Uzmanlık Alanı *
                   </Text>
                   <TextInput
-                    style={[styles.input, isDarkMode && styles.darkInput]}
+                    style={[commonStyles.input, isDarkMode && commonStyles.darkInput]}
                     value={formData.specialization}
                     onChangeText={(text) => setFormData({...formData, specialization: text})}
                     placeholder="Diyetisyen, Beslenme Uzmanı vb."
@@ -244,12 +239,12 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
                   />
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={[styles.label, isDarkMode && styles.darkText]}>
+                <View style={commonStyles.inputGroup}>
+                  <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
                     Ruhsat Numarası *
                   </Text>
                   <TextInput
-                    style={[styles.input, isDarkMode && styles.darkInput]}
+                    style={[commonStyles.input, isDarkMode && commonStyles.darkInput]}
                     value={formData.licenseNumber}
                     onChangeText={(text) => setFormData({...formData, licenseNumber: text})}
                     placeholder="Mesleki ruhsat numaranız"
@@ -262,8 +257,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
             {/* Patient Doctor Selection */}
             {showDoctorSelection && doctors.length > 0 && (
-              <View style={styles.inputGroup}>
-                <Text style={[styles.label, isDarkMode && styles.darkText]}>
+              <View style={commonStyles.inputGroup}>
+                <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
                   Doktor Seçimi *
                 </Text>
                 <ScrollView style={styles.doctorList} nestedScrollEnabled>
@@ -302,25 +297,26 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
 
             {/* Register Button */}
             <TouchableOpacity
-              style={[styles.registerButton, loading && styles.registerButtonDisabled]}
+              style={[commonStyles.buttonPrimary, loading && styles.registerButtonDisabled]}
               onPress={handleRegister}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.registerButtonText}>Kayıt Ol</Text>
+                <Text style={commonStyles.buttonText}>Kayıt Ol</Text>
               )}
             </TouchableOpacity>
 
             {/* Login Link */}
             <View style={styles.loginContainer}>
-              <Text style={[styles.loginText, isDarkMode && styles.darkSubtitle]}>
+              <Text style={[commonStyles.subtitle, isDarkMode && commonStyles.darkSubtitle]}>
                 Zaten hesabınız var mı?{' '}
               </Text>
               <TouchableOpacity 
                 onPress={onNavigateToLogin}
                 disabled={loading}
+                style={styles.loginButton}
               >
                 <Text style={[styles.loginLink, loading && styles.loginLinkDisabled]}>
                   Giriş Yap

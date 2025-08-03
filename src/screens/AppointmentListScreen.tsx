@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Appointment, Patient, User } from '../types';
 import { AppointmentService } from '../services/appointmentService';
+import { commonStyles } from '../styles/commonStyles';
 
 interface AppointmentListScreenProps {
   patients: Patient[];
@@ -184,31 +185,28 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
   });
 
   return (
-    <View style={[styles.container, isDarkMode && styles.darkContainer]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, isDarkMode && styles.darkText]}>
+    <View style={[commonStyles.container, isDarkMode && commonStyles.darkContainer]}>
+      <View style={commonStyles.header}>
+        <Text style={[commonStyles.titleLarge, isDarkMode && commonStyles.darkText]}>
           📅 Randevular
         </Text>
-        <Text style={[styles.subtitle, isDarkMode && styles.darkSubtitle]}>
+        <Text style={[commonStyles.subtitle, isDarkMode && commonStyles.darkSubtitle]}>
           {currentTab === 'scheduled' ? appointments.length : pendingAppointments.length} randevu
         </Text>
       </View>
 
       {/* Tab Buttons */}
-      <View style={styles.tabContainer}>
+      <View style={commonStyles.tabContainer}>
         <TouchableOpacity
           style={[
-            styles.tabButton,
-            currentTab === 'scheduled' && styles.activeTabButton,
-            isDarkMode && styles.darkTabButton,
-            currentTab === 'scheduled' && isDarkMode && styles.darkActiveTabButton,
+            commonStyles.tabButton,
+            currentTab === 'scheduled' && commonStyles.tabButtonActive,
           ]}
           onPress={() => setCurrentTab('scheduled')}
         >
           <Text style={[
-            styles.tabButtonText,
-            currentTab === 'scheduled' && styles.activeTabButtonText,
-            isDarkMode && styles.darkTabButtonText,
+            commonStyles.tabButtonText,
+            currentTab === 'scheduled' && commonStyles.tabButtonTextActive,
           ]}>
             📅 Planlanmış ({appointments.length})
           </Text>
@@ -216,17 +214,14 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
 
         <TouchableOpacity
           style={[
-            styles.tabButton,
-            currentTab === 'pending' && styles.activeTabButton,
-            isDarkMode && styles.darkTabButton,
-            currentTab === 'pending' && isDarkMode && styles.darkActiveTabButton,
+            commonStyles.tabButton,
+            currentTab === 'pending' && commonStyles.tabButtonActive,
           ]}
           onPress={() => setCurrentTab('pending')}
         >
           <Text style={[
-            styles.tabButtonText,
-            currentTab === 'pending' && styles.activeTabButtonText,
-            isDarkMode && styles.darkTabButtonText,
+            commonStyles.tabButtonText,
+            currentTab === 'pending' && commonStyles.tabButtonTextActive,
           ]}>
             ⏳ Bekleyen Onaylar ({pendingAppointments.length})
           </Text>
@@ -234,40 +229,40 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
       </View>
 
       {/* Arama Çubuğu */}
-      <View style={styles.searchContainer}>
+      <View style={commonStyles.searchContainer}>
         <TextInput
-          style={[styles.searchInput, isDarkMode && styles.darkInput]}
+          style={[commonStyles.searchInput, isDarkMode && commonStyles.darkInput]}
           placeholder="Randevu ara..."
-          placeholderTextColor={isDarkMode ? '#999' : '#666'}
+          placeholderTextColor={isDarkMode ? '#9ca3af' : '#6b7280'}
           value={searchText}
           onChangeText={setSearchText}
         />
       </View>
 
       {/* Action Buttons */}
-      <View style={styles.actionButtons}>
+      <View style={commonStyles.actionButtons}>
         <TouchableOpacity 
-          style={styles.refreshButton}
+          style={[commonStyles.buttonSecondary, { flex: 0.3 }]}
           onPress={loadAppointments}
           disabled={loading}
         >
-          <Text style={styles.refreshButtonText}>🔄 Yenile</Text>
+          <Text style={commonStyles.buttonTextSecondary}>🔄 Yenile</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.addButton}
+          style={[commonStyles.buttonPrimary, { flex: 0.7 }]}
           onPress={() => onAddAppointment()}
         >
-          <Text style={styles.addButtonText}>➕ Yeni Randevu Ekle</Text>
+          <Text style={commonStyles.buttonText}>➕ Yeni Randevu Ekle</Text>
         </TouchableOpacity>
       </View>
 
       {/* Randevu Listesi */}
-      <ScrollView style={styles.appointmentList}>
+      <ScrollView style={commonStyles.listContainer}>
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007bff" />
-            <Text style={[styles.loadingText, isDarkMode && styles.darkSubtitle]}>
+          <View style={commonStyles.loadingContainer}>
+            <ActivityIndicator size="large" color="#6366f1" />
+            <Text style={[commonStyles.loadingText, isDarkMode && commonStyles.darkSubtitle]}>
               Randevular yükleniyor...
             </Text>
           </View>
@@ -278,7 +273,7 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
           return (
             <TouchableOpacity
               key={appointment.id}
-              style={[styles.appointmentCard, isDarkMode && styles.darkCard]}
+              style={[commonStyles.card, isDarkMode && styles.darkCard]}
               onPress={() => onAppointmentPress(appointment)}
             >
               <View style={styles.appointmentHeader}>
@@ -296,8 +291,8 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
                   </View>
                 </View>
                 
-                <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
-                  <Text style={styles.statusText}>
+                <View style={[commonStyles.statusBadge, { backgroundColor: statusInfo.color }]}>
+                  <Text style={commonStyles.statusText}>
                     {statusInfo.icon} {statusInfo.text}
                   </Text>
                 </View>
@@ -348,21 +343,21 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
               {currentTab === 'pending' && (
                 <View style={styles.appointmentActions}>
                   <TouchableOpacity
-                    style={[styles.rejectButton, processing === appointment.id && styles.disabledButton]}
+                    style={[commonStyles.buttonDanger, processing === appointment.id && styles.disabledButton, { flex: 1 }]}
                     onPress={() => openRejectModal(appointment)}
                     disabled={processing === appointment.id}
                   >
-                    <Text style={styles.rejectButtonText}>
+                    <Text style={commonStyles.buttonText}>
                       {processing === appointment.id ? '...' : '❌ Reddet'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.approveButton, processing === appointment.id && styles.disabledButton]}
+                    style={[commonStyles.buttonSuccess, processing === appointment.id && styles.disabledButton, { flex: 1 }]}
                     onPress={() => openApprovalModal(appointment)}
                     disabled={processing === appointment.id}
                   >
-                    <Text style={styles.approveButtonText}>
+                    <Text style={commonStyles.buttonText}>
                       {processing === appointment.id ? '...' : '✅ Onayla'}
                     </Text>
                   </TouchableOpacity>
@@ -373,8 +368,12 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
         })}
 
         {!loading && sortedAppointments.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, isDarkMode && styles.darkSubtitle]}>
+          <View style={commonStyles.emptyContainer}>
+            <Text style={commonStyles.emptyIcon}>📅</Text>
+            <Text style={[commonStyles.emptyTitle, isDarkMode && commonStyles.darkText]}>
+              {currentTab === 'scheduled' ? 'Randevu Yok' : 'Bekleyen Onay Yok'}
+            </Text>
+            <Text style={[commonStyles.emptyText, isDarkMode && commonStyles.darkSubtitle]}>
               {appointments.length === 0 
                 ? 'Henüz randevu kaydı yok. Yeni randevu ekleyebilirsiniz.'
                 : 'Arama kriterlerinize uygun randevu bulunamadı.'
@@ -391,23 +390,23 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
         animationType="slide"
         onRequestClose={() => setShowApprovalModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, isDarkMode && styles.darkModalContent]}>
-            <Text style={[styles.modalTitle, isDarkMode && styles.darkText]}>
+        <View style={commonStyles.modalOverlay}>
+          <View style={[commonStyles.modalContent, isDarkMode && commonStyles.darkModalContent]}>
+            <Text style={[commonStyles.modalTitle, isDarkMode && commonStyles.darkText]}>
               Randevuyu Onayla
             </Text>
             
             {selectedAppointment && (
-              <Text style={[styles.modalSubtitle, isDarkMode && styles.darkSubtitle]}>
+              <Text style={[commonStyles.modalSubtitle, isDarkMode && commonStyles.darkSubtitle]}>
                 {selectedAppointment.patientName} - {selectedAppointment.title}
               </Text>
             )}
 
-            <Text style={[styles.modalLabel, isDarkMode && styles.darkText]}>
+            <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
               Notlar (Opsiyonel):
             </Text>
             <TextInput
-              style={[styles.modalInput, isDarkMode && styles.darkModalInput]}
+              style={[commonStyles.input, isDarkMode && commonStyles.darkInput]}
               value={approvalNotes}
               onChangeText={setApprovalNotes}
               placeholder="Randevu hakkında notlarınız..."
@@ -416,22 +415,22 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
               numberOfLines={4}
             />
 
-            <View style={styles.modalActions}>
+            <View style={commonStyles.modalActions}>
               <TouchableOpacity
-                style={styles.modalCancelButton}
+                style={commonStyles.buttonSecondary}
                 onPress={() => {
                   setShowApprovalModal(false);
                   setApprovalNotes('');
                 }}
               >
-                <Text style={styles.modalCancelButtonText}>İptal</Text>
+                <Text style={commonStyles.buttonTextSecondary}>İptal</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.modalApproveButton}
+                style={commonStyles.buttonSuccess}
                 onPress={() => selectedAppointment && handleApprove(selectedAppointment, approvalNotes)}
               >
-                <Text style={styles.modalApproveButtonText}>Onayla</Text>
+                <Text style={commonStyles.buttonText}>Onayla</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -445,23 +444,23 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
         animationType="slide"
         onRequestClose={() => setShowRejectModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, isDarkMode && styles.darkModalContent]}>
-            <Text style={[styles.modalTitle, isDarkMode && styles.darkText]}>
+        <View style={commonStyles.modalOverlay}>
+          <View style={[commonStyles.modalContent, isDarkMode && commonStyles.darkModalContent]}>
+            <Text style={[commonStyles.modalTitle, isDarkMode && commonStyles.darkText]}>
               Randevuyu Reddet
             </Text>
             
             {selectedAppointment && (
-              <Text style={[styles.modalSubtitle, isDarkMode && styles.darkSubtitle]}>
+              <Text style={[commonStyles.modalSubtitle, isDarkMode && commonStyles.darkSubtitle]}>
                 {selectedAppointment.patientName} - {selectedAppointment.title}
               </Text>
             )}
 
-            <Text style={[styles.modalLabel, isDarkMode && styles.darkText]}>
+            <Text style={[commonStyles.label, isDarkMode && commonStyles.darkText]}>
               Red Sebebi *:
             </Text>
             <TextInput
-              style={[styles.modalInput, isDarkMode && styles.darkModalInput]}
+              style={[commonStyles.input, isDarkMode && commonStyles.darkInput]}
               value={rejectionReason}
               onChangeText={setRejectionReason}
               placeholder="Randevuyu neden reddediyorsunuz?"
@@ -470,23 +469,23 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
               numberOfLines={4}
             />
 
-            <View style={styles.modalActions}>
+            <View style={commonStyles.modalActions}>
               <TouchableOpacity
-                style={styles.modalCancelButton}
+                style={commonStyles.buttonSecondary}
                 onPress={() => {
                   setShowRejectModal(false);
                   setRejectionReason('');
                   setSelectedAppointment(null);
                 }}
               >
-                <Text style={styles.modalCancelButtonText}>İptal</Text>
+                <Text style={commonStyles.buttonTextSecondary}>İptal</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.modalRejectButton}
+                style={commonStyles.buttonDanger}
                 onPress={() => selectedAppointment && handleReject(selectedAppointment, rejectionReason)}
               >
-                <Text style={styles.modalRejectButtonText}>Reddet</Text>
+                <Text style={commonStyles.buttonText}>Reddet</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -497,360 +496,114 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  darkContainer: {
-    backgroundColor: '#1a1a1a',
-  },
-  header: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6c757d',
-  },
-  darkText: {
-    color: '#ffffff',
-  },
-  darkSubtitle: {
-    color: '#adb5bd',
-  },
-  searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  searchInput: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  darkInput: {
-    backgroundColor: '#2d2d2d',
-    borderColor: '#444',
-    color: '#ffffff',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    gap: 12,
-  },
-  refreshButton: {
-    backgroundColor: '#6c757d',
-    flex: 0.3,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  refreshButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  addButton: {
-    backgroundColor: '#007bff',
-    flex: 0.7,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  appointmentList: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  appointmentCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+  // Custom appointment card layout styles
   darkCard: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: '#262626',
   },
+  
   appointmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
   },
+  
   appointmentTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
+  
   typeIcon: {
-    fontSize: 24,
+    fontSize: 20,
     marginRight: 12,
   },
+  
   titleContainer: {
     flex: 1,
   },
+  
   appointmentTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212529',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 2,
   },
+  
   appointmentPatient: {
     fontSize: 14,
-    color: '#6c757d',
-    marginTop: 2,
+    color: '#6b7280',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
+  
   appointmentInfo: {
     gap: 6,
   },
+  
   dateTimeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 4,
   },
+  
   dateTimeText: {
     fontSize: 14,
-    color: '#6c757d',
+    color: '#6b7280',
   },
+  
   typeRow: {
     marginBottom: 4,
   },
+  
   typeText: {
     fontSize: 14,
-    color: '#6c757d',
+    color: '#6b7280',
   },
+  
   descriptionRow: {
     marginBottom: 4,
   },
+  
   descriptionText: {
     fontSize: 14,
-    color: '#6c757d',
+    color: '#6b7280',
     fontStyle: 'italic',
   },
+  
   notesRow: {
-    marginTop: 4,
+    marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+    borderTopColor: '#e5e7eb',
   },
+  
   notesText: {
     fontSize: 12,
-    color: '#6c757d',
+    color: '#6b7280',
     fontStyle: 'italic',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
+  
+  rejectionText: {
+    fontSize: 12,
+    color: '#ef4444',
+    fontStyle: 'italic',
   },
-  loadingText: {
-    fontSize: 16,
-    color: '#6c757d',
-    marginTop: 16,
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#6c757d',
-    textAlign: 'center',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 12,
-    backgroundColor: '#f8f9fa',
-    padding: 4,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  darkTabButton: {
-    backgroundColor: 'transparent',
-  },
-  activeTabButton: {
-    backgroundColor: '#007bff',
-  },
-  darkActiveTabButton: {
-    backgroundColor: '#007bff',
-  },
-  tabButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6c757d',
-  },
-  darkTabButtonText: {
-    color: '#adb5bd',
-  },
-  activeTabButtonText: {
-    color: '#fff',
-  },
+  
   appointmentActions: {
     flexDirection: 'row',
     gap: 12,
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+    borderTopColor: '#e5e7eb',
   },
-  rejectButton: {
-    flex: 1,
-    backgroundColor: '#dc3545',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  rejectButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  approveButton: {
-    flex: 1,
-    backgroundColor: '#28a745',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  approveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  
   disabledButton: {
-    backgroundColor: '#999',
-  },
-  rejectionText: {
-    fontSize: 12,
-    color: '#dc3545',
-    fontStyle: 'italic',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    margin: 20,
-    minWidth: 300,
-  },
-  darkModalContent: {
-    backgroundColor: '#2d2d2d',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: '#6c757d',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#212529',
-    marginBottom: 8,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    color: '#212529',
-    textAlignVertical: 'top',
-    marginBottom: 20,
-  },
-  darkModalInput: {
-    backgroundColor: '#444',
-    borderColor: '#666',
-    color: '#ffffff',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalCancelButton: {
-    flex: 1,
-    backgroundColor: '#6c757d',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalCancelButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalApproveButton: {
-    flex: 1,
-    backgroundColor: '#28a745',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalApproveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalRejectButton: {
-    flex: 1,
-    backgroundColor: '#dc3545',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalRejectButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    backgroundColor: '#a3a3a3',
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
 });
 

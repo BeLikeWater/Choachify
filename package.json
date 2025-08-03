@@ -1,15 +1,19 @@
 {
   "name": "Coachify",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
+    "ios:release": "react-native run-ios --mode Release",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
     "web": "webpack serve --mode development",
-    "build:web": "webpack --mode production"
+    "build:web": "webpack --mode production",
+    "build:ios": "cd ios && xcodebuild -workspace Coachify.xcworkspace -scheme Coachify -configuration Release -destination generic/platform=iOS -archivePath ./Coachify.xcarchive archive",
+    "export:ios": "cd ios && xcodebuild -exportArchive -archivePath ./Coachify.xcarchive -exportPath ./build -exportOptionsPlist ./ExportOptions.plist",
+    "clean:ios": "cd ios && xcodebuild clean && rm -rf ~/Library/Developer/Xcode/DerivedData/*"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
