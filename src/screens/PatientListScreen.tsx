@@ -42,14 +42,6 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
     patient.email.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const getGenderIcon = (gender: string) => {
-    switch (gender) {
-      case 'male': return '👨';
-      case 'female': return '👩';
-      default: return '👤';
-    }
-  };
-
   const getBMIStatus = (bmi: number) => {
     if (bmi < 18.5) return { text: 'Zayıf', color: '#2196f3' };
     if (bmi < 25) return { text: 'Normal', color: '#4caf50' };
@@ -60,19 +52,6 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('tr-TR');
-  };
-
-  const calculateAge = (birthDate: string) => {
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    
-    return age;
   };
 
   return (
@@ -125,8 +104,10 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
             </Text>
           </View>
         ) : filteredPatients.map((patient) => {
-          const bmiStatus = getBMIStatus(patient.bmi);
-          const age = calculateAge(patient.birthDate);
+          // Optional BMI calculation from old interface, fallback if not available
+          const bmi = patient.bmi || (patient.height && patient.weight ? 
+            Math.round((patient.weight / ((patient.height / 100) ** 2)) * 10) / 10 : null);
+          const bmiStatus = bmi ? getBMIStatus(bmi) : { text: 'N/A', color: '#6c757d' };
           
           return (
             <TouchableOpacity
@@ -137,23 +118,25 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
               <View style={styles.patientHeader}>
                 <View style={styles.patientNameRow}>
                   <Text style={styles.genderIcon}>
-                    {getGenderIcon(patient.gender)}
+                    {patient.gender === 'Erkek' ? '👨' : '👩'}
                   </Text>
                   <View style={styles.nameContainer}>
                     <Text style={[styles.patientName, isDarkMode && styles.darkText]}>
                       {patient.firstName} {patient.lastName}
                     </Text>
                     <Text style={[styles.patientAge, isDarkMode && styles.darkSubtitle]}>
-                      {age} yaşında
+                      {patient.age} yaşında
                     </Text>
                   </View>
                 </View>
                 
-                <View style={[styles.bmiBadge, { backgroundColor: bmiStatus.color }]}>
-                  <Text style={styles.bmiText}>
-                    VKİ: {patient.bmi}
-                  </Text>
-                </View>
+                {bmi && (
+                  <View style={[styles.bmiBadge, { backgroundColor: bmiStatus.color }]}>
+                    <Text style={styles.bmiText}>
+                      VKİ: {bmi}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <View style={styles.patientInfo}>
@@ -169,16 +152,26 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
                   </Text>
                 </View>
 
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
-                    📏 {patient.height} cm • ⚖️ {patient.weight} kg
-                  </Text>
-                </View>
-
-                {patient.medicalHistory.length > 0 && (
+                {patient.address && (
                   <View style={styles.infoRow}>
                     <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
-                      🏥 {patient.medicalHistory.join(', ')}
+                      📍 {patient.address}
+                    </Text>
+                  </View>
+                )}
+
+                {patient.height && patient.weight && (
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
+                      📏 {patient.height} cm • ⚖️ {patient.weight} kg
+                    </Text>
+                  </View>
+                )}
+
+                {patient.medicalHistory && patient.medicalHistory.length > 0 && (
+                  <View style={styles.infoRow}>
+                    <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
+                      🏥 {patient.medicalHistory}
                     </Text>
                   </View>
                 )}

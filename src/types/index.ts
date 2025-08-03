@@ -1,43 +1,80 @@
+// Auth Types
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  userType: 'doktor' | 'hasta';
+  createdAt: string;
+  updatedAt: string;
+  // Doktor specific fields
+  specialization?: string;
+  licenseNumber?: string;
+  // Hasta specific fields
+  doctorId?: string; // Hangi doktora bağlı
+}
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  userType: 'doktor' | 'hasta';
+  specialization?: string;
+  licenseNumber?: string;
+  doctorId?: string;
+}
+
 export interface Patient {
   id: string;
   // Kimlik Bilgileri
   firstName: string;
   lastName: string;
-  birthDate: string;
-  gender: 'male' | 'female' | 'other';
+  age: number;
+  gender: 'Erkek' | 'Kadın';
   
   // İletişim Bilgileri
   phone: string;
   email: string;
+  address?: string;
+  emergencyContact?: string;
   
-  // Fiziksel Bilgiler
-  height: number; // cm
-  weight: number; // kg
-  bmi: number;
+  // Sağlık Bilgileri
+  medicalHistory?: string;
+  allergies?: string;
+  currentMedications?: string;
   
-  // Kan Değerleri
-  bloodValues: {
+  // Sistem
+  createdAt: string;
+  updatedAt: string;
+  
+  // Eski alanlar (geriye uyumluluk için opsiyonel)
+  birthDate?: string;
+  height?: number; // cm
+  weight?: number; // kg
+  bmi?: number;
+  bloodValues?: {
     glucose?: number;
     cholesterol?: number;
     hemoglobin?: number;
     lastUpdated?: string;
   };
-  
-  // Sağlık Geçmişi
-  allergies: string[];
-  medicalHistory: string[];
-  medications: string[];
-  
-  // Yaşam Tarzı
-  lifestyle: {
+  lifestyle?: {
     sleepHours: number;
     exerciseFrequency: 'none' | 'rarely' | 'sometimes' | 'often' | 'daily';
     stressLevel: 1 | 2 | 3 | 4 | 5; // 1: düşük, 5: yüksek
   };
-  
-  // Sistem
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface DashboardData {
@@ -61,16 +98,31 @@ export interface Appointment {
   id: string;
   patientId: string;
   patientName: string; // Cache için hasta adı
+  patientEmail: string; // Hasta email'i
+  doctorId: string;
+  doctorName: string; // Cache için doktor adı
   title: string;
   description?: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM
   duration: number; // dakika
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
+  status: 'pending' | 'scheduled' | 'completed' | 'cancelled' | 'rejected' | 'no-show';
   type: 'consultation' | 'follow-up' | 'check-up' | 'emergency' | 'other';
   notes?: string;
+  rejectionReason?: string; // Doktor reddetme sebebi
   createdAt: string;
   updatedAt: string;
+}
+
+// Randevu talep etmek için interface
+export interface AppointmentRequest {
+  doctorId: string;
+  title: string;
+  description?: string;
+  date: string;
+  time: string;
+  duration: number;
+  type: 'consultation' | 'follow-up' | 'check-up' | 'emergency' | 'other';
 }
 
 export interface Measurement {

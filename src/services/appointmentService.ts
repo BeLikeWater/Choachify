@@ -11,7 +11,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { Appointment } from '../types';
+import { Appointment, AppointmentRequest, User } from '../types';
 
 const COLLECTION_NAME = 'appointments';
 
@@ -39,7 +39,53 @@ const cleanUndefinedValues = (obj: any): any => {
 };
 
 export class AppointmentService {
-  // Randevu ekleme
+  // Hasta tarafından randevu talebi oluşturma
+  static async requestAppointment(
+    patientUser: User, 
+    doctorUser: User, 
+    appointmentRequest: AppointmentRequest
+  ): Promise<Appointment> {
+    try {
+      console.log('Creating appointment request...', appointmentRequest.title);
+      
+      const now = new Date().toISOString().split('T')[0];
+      const appointmentData: Omit<Appointment, 'id'> = {
+        patientId: patientUser.id,
+        patientName: `${patientUser.firstName} ${patientUser.lastName}`,
+        patientEmail: patientUser.email,
+        doctorId: doctorUser.id,
+        doctorName: `Dr. ${doctorUser.firstName} ${doctorUser.lastName}`,
+        title: appointmentRequest.title,
+        description: appointmentRequest.description,
+        date: appointmentRequest.date,
+        time: appointmentRequest.time,
+        duration: appointmentRequest.duration,
+        type: appointmentRequest.type,
+        status: 'pending', // Önce beklemede
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // Undefined değerleri temizle
+      const cleanedData = cleanUndefinedValues(appointmentData);
+      console.log('Cleaned appointment data keys:', Object.keys(cleanedData));
+
+      const docRef = await addDoc(collection(db, COLLECTION_NAME), cleanedData);
+      console.log('✅ Appointment request created with ID: ', docRef.id);
+      
+      const newAppointment: Appointment = {
+        id: docRef.id,
+        ...cleanedData,
+      };
+
+      return newAppointment;
+    } catch (error) {
+      console.error('❌ Randevu talebi oluşturulurken hata:', error);
+      throw error;
+    }
+  }
+
+  // Randevu ekleme (eski method)
   static async addAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Appointment> {
     try {
       console.log('Adding appointment to Firebase...', appointmentData.title);
@@ -119,10 +165,11 @@ export class AppointmentService {
   static async getAppointmentsByPatient(patientId: string): Promise<Appointment[]> {
     try {
       console.log('Fetching appointments for patient:', patientId);
+      
+      // Sadece patientId ile filtreleme yapalım, orderBy olmadan
       const q = query(
         collection(db, COLLECTION_NAME), 
-        where('patientId', '==', patientId),
-        orderBy('date', 'desc')
+        where('patientId', '==', patientId)
       );
       const querySnapshot = await getDocs(q);
       
@@ -211,6 +258,144 @@ export class AppointmentService {
       return appointments;
     } catch (error) {
       console.error('Bugünkü randevular getirilirken hata oluştu:', error);
+      throw error;
+    }
+  }
+
+  // Doktorun randevularını getirme
+  static async getDoctorAppointments(doctorId: string): Promise<Appointment[]> {
+    try {
+      console.log('Fetching appointments for doctor:', doctorId);
+      
+      // Sadece doctorId ile filtreleme yapalım
+      const q = query(
+        collection(db, COLLECTION_NAME), 
+        where('doctorId', '==', doctorId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const appointments: Appointment[] = [];
+      querySnapshot.forEach((doc) => {
+        appointments.push({
+          id: doc.id,
+          ...doc.data(),
+        } as Appointment);
+      });
+
+      // Client tarafında tarih sıralaması
+      appointments.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB.getTime() - dateA.getTime(); // En yeni önce
+      });
+
+      console.log('Fetched doctor appointments count:', appointments.length);
+      return appointments;
+    } catch (error) {
+      console.error('Doktor randevuları getirilirken hata:', error);
+      throw error;
+    }
+  }
+
+  // Bekleyen randevu taleplerini getirme (doktor için)
+  static async getPendingAppointments(doctorId: string): Promise<Appointment[]> {
+    try {
+      console.log('Fetching pending appointments for doctor:', doctorId);
+      
+      // İlk önce sadece doctorId ile filtreleme yapalım
+      const q = query(
+        collection(db, COLLECTION_NAME), 
+        where('doctorId', '==', doctorId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const appointments: Appointment[] = [];
+      querySnapshot.forEach((doc) => {
+        const appointmentData = doc.data() as Appointment;
+        // Client tarafında status filtering yapalım
+        if (appointmentData.status === 'pending') {
+          appointments.push({
+            id: doc.id,
+            ...appointmentData,
+          });
+        }
+      });
+
+      // Client tarafında tarih sıralaması
+      appointments.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB.getTime() - dateA.getTime(); // En yeni önce
+      });
+
+      console.log('Fetched pending appointments count:', appointments.length);
+      return appointments;
+    } catch (error) {
+      console.error('Bekleyen randevular getirilirken hata:', error);
+      throw error;
+    }
+  }
+
+  // Randevu onaylama
+  static async approveAppointment(appointmentId: string, notes?: string): Promise<void> {
+    try {
+      console.log('Approving appointment:', appointmentId);
+      const appointmentRef = doc(db, COLLECTION_NAME, appointmentId);
+      const updatedData = {
+        status: 'scheduled',
+        notes: notes || '',
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
+
+      const cleanedData = cleanUndefinedValues(updatedData);
+      await updateDoc(appointmentRef, cleanedData);
+      console.log('✅ Appointment approved');
+    } catch (error) {
+      console.error('Randevu onaylanırken hata:', error);
+      throw error;
+    }
+  }
+
+  // Randevu reddetme
+  static async rejectAppointment(appointmentId: string, rejectionReason: string): Promise<void> {
+    try {
+      console.log('Rejecting appointment:', appointmentId);
+      const appointmentRef = doc(db, COLLECTION_NAME, appointmentId);
+      const updatedData = {
+        status: 'rejected',
+        rejectionReason,
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
+
+      const cleanedData = cleanUndefinedValues(updatedData);
+      await updateDoc(appointmentRef, cleanedData);
+      console.log('✅ Appointment rejected');
+    } catch (error) {
+      console.error('Randevu reddedilirken hata:', error);
+      throw error;
+    }
+  }
+
+  // Randevu durumunu güncelleme
+  static async updateAppointmentStatus(
+    appointmentId: string, 
+    status: Appointment['status'], 
+    notes?: string
+  ): Promise<void> {
+    try {
+      console.log('Updating appointment status:', appointmentId, 'to', status);
+      const appointmentRef = doc(db, COLLECTION_NAME, appointmentId);
+      const updatedData = {
+        status,
+        ...(notes && { notes }),
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
+
+      const cleanedData = cleanUndefinedValues(updatedData);
+      await updateDoc(appointmentRef, cleanedData);
+      console.log('✅ Appointment status updated');
+    } catch (error) {
+      console.error('Randevu durumu güncellenirken hata:', error);
       throw error;
     }
   }

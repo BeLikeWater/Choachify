@@ -10,12 +10,13 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Patient, Appointment } from '../types';
+import { Patient, Appointment, User } from '../types';
 import { AppointmentService } from '../services/appointmentService';
 
 interface AddAppointmentScreenProps {
   patients: Patient[];
   selectedPatient?: Patient;
+  user: User;
   onSave: (appointment: Appointment) => void;
   onCancel: () => void;
 }
@@ -23,6 +24,7 @@ interface AddAppointmentScreenProps {
 const AddAppointmentScreen: React.FC<AddAppointmentScreenProps> = ({
   patients,
   selectedPatient,
+  user,
   onSave,
   onCancel,
 }) => {
@@ -84,9 +86,14 @@ const AddAppointmentScreen: React.FC<AddAppointmentScreenProps> = ({
 
     try {
       setLoading(true);
+      const selectedPatientData = patients.find(p => p.id === formData.patientId);
+      
       const appointmentData = {
         patientId: formData.patientId,
         patientName: formData.patientName,
+        patientEmail: selectedPatientData?.email || '',
+        doctorId: user.id,
+        doctorName: `Dr. ${user.firstName} ${user.lastName}`,
         title: formData.title,
         description: formData.description || undefined,
         date: formData.date,

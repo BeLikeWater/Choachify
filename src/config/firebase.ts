@@ -1,5 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator, initializeFirestore } from 'firebase/firestore';
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyB108o4JyD9-yxQAPzBWd1osGyfRMRisWs",
@@ -27,8 +29,14 @@ export const db = initializeFirestore(app, {
   },
 });
 
+// Auth'u React Native persistence ile başlat
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
+
 // Test bağlantısı için
 console.log('Firebase initialized with project:', firebaseConfig.projectId);
 console.log('Firestore initialized with long polling enabled');
+console.log('Auth initialized with AsyncStorage persistence');
 
 export default app;
