@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,9 +8,14 @@ import {
   useColorScheme,
   ActivityIndicator,
   Alert,
+  SafeAreaView,
+  TextInput,
+  Animated,
+  RefreshControl,
 } from 'react-native';
 import { Patient, DietPlan } from '../types';
 import { DietService } from '../services/dietService';
+import { colors, typography, spacing, borderRadius, shadows, buttonStyles, iconSizes } from '../styles/designSystem';
 
 interface DietDetailScreenProps {
   patient: Patient;
@@ -28,7 +33,13 @@ const DietDetailScreen: React.FC<DietDetailScreenProps> = ({
   const isDarkMode = useColorScheme() === 'dark';
   const [dietPlans, setDietPlans] = useState<DietPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchText, setSearchText] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState<7 | 30 | 90>(30);
+  
+  // Animated search bar
+  const searchBarHeight = useRef(new Animated.Value(60)).current;
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     loadDietPlans();
@@ -44,6 +55,39 @@ const DietDetailScreen: React.FC<DietDetailScreenProps> = ({
       Alert.alert('Hata', 'Diyet planları yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadDietPlans();
+    setRefreshing(false);
+  };
+  
+  // Scroll handler for search bar animation
+  const handleScroll = (event: any) => {
+    const currentOffset = event.nativeEvent.contentOffset.y;
+    const direction = currentOffset > lastScrollY.current ? 'down' : 'up';
+    const diff = Math.abs(currentOffset - lastScrollY.current);
+    
+    if (diff > 10) {
+      if (direction === 'up' && currentOffset > 50) {
+        // Scrolling up - hide search bar
+        Animated.timing(searchBarHeight, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+      } else if (direction === 'down') {
+        // Scrolling down - show search bar
+        Animated.timing(searchBarHeight, {
+          toValue: 60,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+      }
+      lastScrollY.current = currentOffset;
     }
   };
 
@@ -71,6 +115,13 @@ const DietDetailScreen: React.FC<DietDetailScreenProps> = ({
     { value: 30, label: '30 Gün' },
     { value: 90, label: '90 Gün' },
   ];
+  
+  // Search filtering
+  const filteredDietPlans = dietPlans.filter(plan =>
+    plan.title.toLowerCase().includes(searchText.toLowerCase()) ||
+    plan.generalNotes?.toLowerCase().includes(searchText.toLowerCase()) ||
+    plan.createdBy.toLowerCase().includes(searchText.toLowerCase())
+  );
 
   const mealIcons = {
     breakfast: '🍳',
@@ -84,61 +135,94 @@ const DietDetailScreen: React.FC<DietDetailScreenProps> = ({
   const latestDietPlan = getLatestDietPlan();
 
   return (
-    <View style={[styles.container, isDarkMode && styles.darkContainer]}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>← Geri</Text>
+    <SafeAreaView style={[styles.safeContainer, isDarkMode && styles.darkSafeContainer]}>
+      {/* Fixed Header */}
+      <View style={[styles.fixedHeader, isDarkMode && styles.darkHeader]}>
+        <TouchableOpacity onPress={onBack} style={styles.headerLeftButton}>
+          <Text style={styles.headerLeftIcon}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={[styles.title, isDarkMode && styles.darkText]}>
-            🥗 Diyet Takibi
+        
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, isDarkMode && styles.darkHeaderTitle]}>
+            Diyet Planları
           </Text>
-          <Text style={[styles.subtitle, isDarkMode && styles.darkSubtitle]}>
+          <Text style={[styles.headerSubtitle, isDarkMode && styles.darkHeaderSubtitle]}>
             {patient.firstName} {patient.lastName}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => onAddDietPlan(patient)}
-        >
-          <Text style={styles.addButtonText}>+ Ekle</Text>
+        
+        <TouchableOpacity onPress={() => onAddDietPlan(patient)} style={styles.headerRightButton}>
+          <Text style={styles.headerRightIcon}>➕</Text>
         </TouchableOpacity>
       </View>
+      
+      <View style={[styles.container, isDarkMode && styles.darkContainer]}>
+
+        {/* Modern Tab Bar */}
+        <View style={[styles.tabContainer, isDarkMode && styles.darkTabContainer]}>
+          {periods.map((period) => (
+            <TouchableOpacity
+              key={period.value}
+              style={[
+                styles.tabButton,
+                selectedPeriod === period.value && styles.tabButtonActive,
+                isDarkMode && styles.darkTabButton,
+                selectedPeriod === period.value && isDarkMode && styles.darkTabButtonActive,
+              ]}
+              onPress={() => setSelectedPeriod(period.value as 7 | 30 | 90)}
+            >
+              <Text style={[
+                styles.tabButtonText,
+                selectedPeriod === period.value && styles.tabButtonTextActive,
+                isDarkMode && styles.darkTabButtonText,
+                selectedPeriod === period.value && isDarkMode && styles.darkTabButtonTextActive,
+              ]}>
+                📊 {period.label} ({filteredDietPlans.length})
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Animated Search Bar */}
+        <Animated.View style={[styles.searchContainer, { height: searchBarHeight }]}>
+          <View style={[styles.searchInputContainer, isDarkMode && styles.darkInputContainer]}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={[styles.searchInput, isDarkMode && styles.darkInput]}
+              placeholder="Diyet planı ara..."
+              placeholderTextColor={isDarkMode ? '#999' : '#666'}
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+          </View>
+        </Animated.View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#28a745" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, isDarkMode && styles.darkSubtitle]}>
             Diyet planları yükleniyor...
           </Text>
         </View>
       ) : (
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Period Selector */}
-          <View style={styles.periodSelector}>
-            {periods.map((period) => (
-              <TouchableOpacity
-                key={period.value}
-                style={[
-                  styles.periodButton,
-                  selectedPeriod === period.value && styles.activePeriodButton,
-                  isDarkMode && styles.darkPeriodButton,
-                  selectedPeriod === period.value && isDarkMode && styles.darkActivePeriodButton,
-                ]}
-                onPress={() => setSelectedPeriod(period.value as 7 | 30 | 90)}
-              >
-                <Text style={[
-                  styles.periodButtonText,
-                  selectedPeriod === period.value && styles.activePeriodButtonText,
-                  isDarkMode && styles.darkText,
-                ]}>
-                  {period.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        <ScrollView 
+          style={styles.content} 
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+              title="Yenileniyor..."
+              titleColor={isDarkMode ? colors.textDark.secondary : colors.text.secondary}
+            />
+          }
+        >
 
-          {dietPlans.length === 0 ? (
+          {filteredDietPlans.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, isDarkMode && styles.darkSubtitle]}>
                 Henüz diyet planı yok. Yeni plan ekleyebilirsiniz.
@@ -147,405 +231,319 @@ const DietDetailScreen: React.FC<DietDetailScreenProps> = ({
           ) : (
             <>
               {/* Latest Diet Plan Summary */}
-              {latestDietPlan && (
-                <View style={[styles.summaryCard, isDarkMode && styles.darkCard]}>
-                  <Text style={[styles.summaryTitle, isDarkMode && styles.darkText]}>
-                    Son Diyet Planı
-                  </Text>
-                  <Text style={[styles.summaryDate, isDarkMode && styles.darkSubtitle]}>
-                    {formatDate(latestDietPlan.date)}
-                  </Text>
-                  <Text style={[styles.planTitle, isDarkMode && styles.darkText]}>
-                    {latestDietPlan.title}
-                  </Text>
-                  
-                  <View style={styles.summaryInfo}>
-                    <View style={styles.summaryItem}>
-                      <Text style={[styles.summaryLabel, isDarkMode && styles.darkSubtitle]}>Su Hedefi</Text>
-                      <Text style={[styles.summaryValue, isDarkMode && styles.darkText]}>
-                        {latestDietPlan.waterTarget} ml
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.summaryItem}>
-                      <Text style={[styles.summaryLabel, isDarkMode && styles.darkSubtitle]}>Hazırlayan</Text>
-                      <Text style={[styles.summaryValue, isDarkMode && styles.darkText]}>
-                        {latestDietPlan.createdBy}
-                      </Text>
+              {/* Diet Plans List - Modern Cards */}
+              {filteredDietPlans.slice(0, 10).map((dietPlan, index) => (
+                <TouchableOpacity
+                  key={dietPlan.id}
+                  style={[styles.modernCard, isDarkMode && styles.darkCard]}
+                  onPress={() => {
+                    console.log('🔥 DIET PLAN PRESSED - Title:', dietPlan.title);
+                    console.log('🔥 DIET PLAN PRESSED - ID:', dietPlan.id);
+                    console.log('🔥 CALLING onDietPlanPress...');
+                    onDietPlanPress(dietPlan);
+                    console.log('🔥 onDietPlanPress CALLED');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardTitleRow}>
+                      <Text style={styles.cardIcon}>🥗</Text>
+                      <View style={styles.titleContainer}>
+                        <Text style={[styles.cardTitle, isDarkMode && styles.darkText]}>
+                          {dietPlan.title}
+                        </Text>
+                        <Text style={[styles.cardDate, isDarkMode && styles.darkSubtitle]}>
+                          {formatDate(dietPlan.date)}
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
-                  {latestDietPlan.exerciseRecommendation && (
-                    <View style={styles.exerciseInfo}>
-                      <Text style={[styles.exerciseLabel, isDarkMode && styles.darkSubtitle]}>
-                        🏃‍♂️ Egzersiz Önerisi
-                      </Text>
-                      <Text style={[styles.exerciseText, isDarkMode && styles.darkText]}>
-                        {latestDietPlan.exerciseRecommendation}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Diet Plans List */}
-              <View style={[styles.listCard, isDarkMode && styles.darkCard]}>
-                <Text style={[styles.listTitle, isDarkMode && styles.darkText]}>
-                  📋 Diyet Planları
-                </Text>
-                {dietPlans.slice(0, 10).map((dietPlan, index) => (
-                  <TouchableOpacity
-                    key={dietPlan.id}
-                    style={[styles.dietPlanItem, isDarkMode && styles.darkDietPlanItem]}
-                    onPress={() => {
-                      console.log('🔥 DIET PLAN PRESSED - Title:', dietPlan.title);
-                      console.log('🔥 DIET PLAN PRESSED - ID:', dietPlan.id);
-                      console.log('🔥 CALLING onDietPlanPress...');
-                      onDietPlanPress(dietPlan);
-                      console.log('🔥 onDietPlanPress CALLED');
-                    }}
-                    activeOpacity={0.7}
-                    underlayColor={isDarkMode ? '#444' : '#f0f0f0'}
-                  >
-                    <View style={styles.dietPlanHeader}>
-                      <Text style={[styles.dietPlanDate, isDarkMode && styles.darkText]}>
-                        {formatDate(dietPlan.date)}
-                      </Text>
-                      <Text style={[styles.dietPlanCreatedBy, isDarkMode && styles.darkSubtitle]}>
-                        {dietPlan.createdBy}
-                      </Text>
-                    </View>
-                    
-                    <Text style={[styles.dietPlanTitle, isDarkMode && styles.darkText]}>
-                      {dietPlan.title}
-                    </Text>
-
-                    <View style={styles.dietPlanInfo}>
-                      <Text style={[styles.waterTarget, isDarkMode && styles.darkSubtitle]}>
+                  <View style={styles.cardInfo}>
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoItem, isDarkMode && styles.darkSubtitle]}>
                         💧 {dietPlan.waterTarget} ml su
                       </Text>
-                      {dietPlan.supplements && dietPlan.supplements.length > 0 && (
-                        <Text style={[styles.supplements, isDarkMode && styles.darkSubtitle]}>
-                          💊 {dietPlan.supplements.join(', ')}
-                        </Text>
-                      )}
+                    </View>
+                    
+                    <View style={styles.infoRow}>
+                      <Text style={[styles.infoItem, isDarkMode && styles.darkSubtitle]}>
+                        👨‍⚕️ {dietPlan.createdBy}
+                      </Text>
                     </View>
 
-                    {dietPlan.generalNotes && (
-                      <Text style={[styles.generalNotes, isDarkMode && styles.darkSubtitle]}>
-                        💭 {dietPlan.generalNotes}
-                      </Text>
+                    {dietPlan.supplements && dietPlan.supplements.length > 0 && (
+                      <View style={styles.infoRow}>
+                        <Text style={[styles.infoItem, isDarkMode && styles.darkSubtitle]}>
+                          💊 {dietPlan.supplements.join(', ')}
+                        </Text>
+                      </View>
                     )}
-                    
-                    <View style={styles.tapIndicator}>
-                      <Text style={[styles.tapText, isDarkMode && styles.darkSubtitle]}>
-                        👆 Detayları görmek için tıklayın
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
+
+                    {dietPlan.generalNotes && (
+                      <View style={styles.infoRow}>
+                        <Text style={[styles.infoItem, isDarkMode && styles.darkSubtitle]}>
+                          💭 {dietPlan.generalNotes}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
             </>
           )}
         </ScrollView>
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  // SafeArea
+  safeContainer: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
   },
-  darkContainer: {
-    backgroundColor: '#1a1a1a',
+  darkSafeContainer: {
+    backgroundColor: colors.backgroundDark,
   },
-  header: {
+  
+  // Fixed Header
+  fixedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  backButton: {
-    padding: 12,
-    minWidth: 60,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#28a745',
-    fontWeight: '600',
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#212529',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginTop: 2,
-  },
-  addButton: {
-    backgroundColor: '#28a745',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 8,
-    minWidth: 60,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.outlineVariant,
+    ...shadows.level1,
   },
-  addButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
+  darkHeader: {
+    backgroundColor: colors.surfaceDark,
+    borderBottomColor: colors.outlineDark,
+  },
+  
+  headerLeftButton: {
+    ...buttonStyles.icon,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+  },
+  headerLeftIcon: {
+    fontSize: 20,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerTitle: {
+    ...typography.titleMedium,
+    color: colors.text.primary,
+  },
+  darkHeaderTitle: {
+    color: colors.textDark.primary,
+  },
+  headerSubtitle: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  darkHeaderSubtitle: {
+    color: colors.textDark.secondary,
+  },
+  
+  headerRightButton: {
+    ...buttonStyles.icon,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+  },
+  headerRightIcon: {
+    fontSize: 18,
+    color: colors.success,
+    fontWeight: '600',
+  },
+  
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  darkContainer: {
+    backgroundColor: colors.backgroundDark,
   },
   darkText: {
-    color: '#ffffff',
+    color: colors.textDark.primary,
   },
   darkSubtitle: {
-    color: '#adb5bd',
+    color: colors.textDark.secondary,
   },
+  // Modern Tab Bar
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xs,
+    ...shadows.level1,
+  },
+  darkTabContainer: {
+    backgroundColor: colors.surfaceDark,
+  },
+
+  tabButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  darkTabButton: {
+    backgroundColor: 'transparent',
+  },
+  darkTabButtonActive: {
+    backgroundColor: colors.primary,
+  },
+
+  tabButtonText: {
+    ...typography.labelMedium,
+    color: colors.text.secondary,
+    fontWeight: '500',
+  },
+  tabButtonTextActive: {
+    color: colors.onPrimary,
+    fontWeight: '600',
+  },
+  darkTabButtonText: {
+    color: colors.textDark.secondary,
+  },
+  darkTabButtonTextActive: {
+    color: colors.onPrimary,
+  },
+  
+  // Modern search container
+  searchContainer: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  searchInputContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xxl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...shadows.level1,
+  },
+  darkInputContainer: {
+    backgroundColor: colors.surfaceDark,
+    borderColor: colors.outlineDark,
+  },
+  searchIcon: {
+    fontSize: iconSizes.md,
+    marginRight: spacing.sm,
+    opacity: 0.6,
+    color: colors.text.tertiary,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.bodyMedium,
+    color: colors.text.primary,
+  },
+  darkInput: {
+    color: colors.textDark.primary,
+  },
+  
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: spacing.lg,
   },
-  periodSelector: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    gap: 8,
-  },
-  periodButton: {
-    flex: 1,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  darkPeriodButton: {
-    backgroundColor: '#2d2d2d',
-    borderColor: '#444',
-  },
-  activePeriodButton: {
-    backgroundColor: '#28a745',
-    borderColor: '#28a745',
-  },
-  darkActivePeriodButton: {
-    backgroundColor: '#198754',
-  },
-  periodButtonText: {
-    fontSize: 14,
-    color: '#6c757d',
-    fontWeight: '600',
-  },
-  activePeriodButtonText: {
-    color: '#ffffff',
-  },
-  summaryCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  // Modern Cards
+  modernCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadows.level2,
   },
   darkCard: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: colors.surfaceDark,
   },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 4,
-  },
-  summaryDate: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginBottom: 8,
-  },
-  planTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#212529',
-    marginBottom: 16,
-  },
-  summaryInfo: {
-    flexDirection: 'row',
-    gap: 20,
-    marginBottom: 16,
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  summaryLabel: {
-    fontSize: 12,
-    color: '#6c757d',
-    marginBottom: 4,
-  },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212529',
-  },
-  exerciseInfo: {
-    backgroundColor: '#e8f5e8',
-    padding: 12,
-    borderRadius: 8,
-  },
-  exerciseLabel: {
-    fontSize: 12,
-    color: '#6c757d',
-    marginBottom: 4,
-  },
-  exerciseText: {
-    fontSize: 14,
-    color: '#212529',
-  },
-  listCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  listTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 16,
-  },
-  dietPlanItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-    paddingVertical: 16,
-    paddingHorizontal: 4,
-    minHeight: 60,
-    zIndex: 1,
-  },
-  darkDietPlanItem: {
-    borderBottomColor: '#444',
-  },
-  dietPlanHeader: {
+  
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
   },
-  dietPlanDate: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#212529',
-  },
-  dietPlanCreatedBy: {
-    fontSize: 12,
-    color: '#6c757d',
-  },
-  dietPlanTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 12,
-  },
-  mealsPreview: {
-    marginBottom: 12,
-  },
-  mealPreview: {
-    backgroundColor: '#f8f9fa',
-    padding: 8,
-    borderRadius: 8,
-    marginRight: 8,
-    alignItems: 'center',
-    minWidth: 70,
-  },
-  darkMealPreview: {
-    backgroundColor: '#3d3d3d',
-  },
-  mealIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  mealName: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#212529',
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  mealItemCount: {
-    fontSize: 9,
-    color: '#6c757d',
-    textAlign: 'center',
-  },
-  dietPlanInfo: {
+  
+  cardTitleRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 8,
-  },
-  waterTarget: {
-    fontSize: 12,
-    color: '#6c757d',
-  },
-  supplements: {
-    fontSize: 12,
-    color: '#6c757d',
+    alignItems: 'center',
     flex: 1,
   },
-  generalNotes: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontStyle: 'italic',
-    marginTop: 8,
+  
+  cardIcon: {
+    fontSize: iconSizes.xl,
+    marginRight: spacing.sm,
   },
+  
+  titleContainer: {
+    flex: 1,
+  },
+  
+  cardTitle: {
+    ...typography.titleMedium,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
+  
+  cardDate: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+  },
+  
+  cardInfo: {
+    gap: spacing.xs,
+  },
+  
+  infoRow: {
+    marginBottom: spacing.xs,
+  },
+  
+  infoItem: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+  },
+  // Loading and Empty States
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: spacing.xxxxl,
   },
   loadingText: {
-    fontSize: 16,
-    color: '#6c757d',
-    marginTop: 16,
+    ...typography.bodyLarge,
+    color: colors.text.secondary,
+    marginTop: spacing.md,
   },
   emptyContainer: {
-    padding: 40,
+    padding: spacing.xxxxl,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
-    color: '#6c757d',
+    ...typography.bodyLarge,
+    color: colors.text.secondary,
     textAlign: 'center',
-  },
-  tapIndicator: {
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  tapText: {
-    fontSize: 12,
-    color: '#28a745',
-    fontWeight: '600',
-    textAlign: 'center',
+    lineHeight: 24,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,10 +10,13 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Animated,
+  RefreshControl,
 } from 'react-native';
 import { Appointment, Patient, User } from '../types';
 import { AppointmentService } from '../services/appointmentService';
 import { commonStyles } from '../styles/commonStyles';
+import { colors, typography, spacing, borderRadius, shadows, buttonStyles, iconSizes } from '../styles/designSystem';
 
 interface AppointmentListScreenProps {
   patients: Patient[];
@@ -32,6 +35,7 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [pendingAppointments, setPendingAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [currentTab, setCurrentTab] = useState<'scheduled' | 'pending'>('scheduled');
   const [processing, setProcessing] = useState<string | null>(null);
@@ -40,6 +44,10 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [approvalNotes, setApprovalNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  
+  // Animated search bar
+  const searchBarHeight = useRef(new Animated.Value(60)).current;
+  const lastScrollY = useRef(0);
 
   // Randevuları yükle
   const loadAppointments = async () => {
@@ -119,14 +127,38 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
     loadAppointments();
   }, []);
 
-  // Sayfa her açıldığında randevuları yenile
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadAppointments();
-    }, 5000); // 5 saniyede bir yenile
+  // Pull-to-refresh fonksiyonu
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAppointments();
+    setRefreshing(false);
+  };
 
-    return () => clearInterval(interval);
-  }, []);
+  // Scroll handler for search bar animation
+  const handleScroll = (event: any) => {
+    const currentOffset = event.nativeEvent.contentOffset.y;
+    const direction = currentOffset > lastScrollY.current ? 'down' : 'up';
+    const diff = Math.abs(currentOffset - lastScrollY.current);
+    
+    if (diff > 10) {
+      if (direction === 'up' && currentOffset > 50) {
+        // Scrolling up - hide search bar
+        Animated.timing(searchBarHeight, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+      } else if (direction === 'down') {
+        // Scrolling down - show search bar
+        Animated.timing(searchBarHeight, {
+          toValue: 60,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+      }
+      lastScrollY.current = currentOffset;
+    }
+  };
 
   // Arama filtresi
   const currentAppointments = currentTab === 'scheduled' ? appointments : pendingAppointments;
@@ -185,28 +217,23 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
   });
 
   return (
-    <View style={[commonStyles.container, isDarkMode && commonStyles.darkContainer]}>
-      <View style={commonStyles.header}>
-        <Text style={[commonStyles.titleLarge, isDarkMode && commonStyles.darkText]}>
-          📅 Randevular
-        </Text>
-        <Text style={[commonStyles.subtitle, isDarkMode && commonStyles.darkSubtitle]}>
-          {currentTab === 'scheduled' ? appointments.length : pendingAppointments.length} randevu
-        </Text>
-      </View>
-
-      {/* Tab Buttons */}
-      <View style={commonStyles.tabContainer}>
+    <View style={[styles.container, isDarkMode && styles.darkContainer]}>
+      {/* Modern Tab Bar */}
+      <View style={[styles.tabContainer, isDarkMode && styles.darkTabContainer]}>
         <TouchableOpacity
           style={[
-            commonStyles.tabButton,
-            currentTab === 'scheduled' && commonStyles.tabButtonActive,
+            styles.tabButton,
+            currentTab === 'scheduled' && styles.tabButtonActive,
+            isDarkMode && styles.darkTabButton,
+            currentTab === 'scheduled' && isDarkMode && styles.darkTabButtonActive,
           ]}
           onPress={() => setCurrentTab('scheduled')}
         >
           <Text style={[
-            commonStyles.tabButtonText,
-            currentTab === 'scheduled' && commonStyles.tabButtonTextActive,
+            styles.tabButtonText,
+            currentTab === 'scheduled' && styles.tabButtonTextActive,
+            isDarkMode && styles.darkTabButtonText,
+            currentTab === 'scheduled' && isDarkMode && styles.darkTabButtonTextActive,
           ]}>
             📅 Planlanmış ({appointments.length})
           </Text>
@@ -214,51 +241,55 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
 
         <TouchableOpacity
           style={[
-            commonStyles.tabButton,
-            currentTab === 'pending' && commonStyles.tabButtonActive,
+            styles.tabButton,
+            currentTab === 'pending' && styles.tabButtonActive,
+            isDarkMode && styles.darkTabButton,
+            currentTab === 'pending' && isDarkMode && styles.darkTabButtonActive,
           ]}
           onPress={() => setCurrentTab('pending')}
         >
           <Text style={[
-            commonStyles.tabButtonText,
-            currentTab === 'pending' && commonStyles.tabButtonTextActive,
+            styles.tabButtonText,
+            currentTab === 'pending' && styles.tabButtonTextActive,
+            isDarkMode && styles.darkTabButtonText,
+            currentTab === 'pending' && isDarkMode && styles.darkTabButtonTextActive,
           ]}>
-            ⏳ Bekleyen Onaylar ({pendingAppointments.length})
+            ⏳ Bekleyen ({pendingAppointments.length})
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Arama Çubuğu */}
-      <View style={commonStyles.searchContainer}>
-        <TextInput
-          style={[commonStyles.searchInput, isDarkMode && commonStyles.darkInput]}
-          placeholder="Randevu ara..."
-          placeholderTextColor={isDarkMode ? '#9ca3af' : '#6b7280'}
+      {/* Animated Search Bar */}
+      <Animated.View style={[styles.searchContainer, { height: searchBarHeight }]}>
+        <View style={[styles.searchInputContainer, isDarkMode && styles.darkInputContainer]}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={[styles.searchInput, isDarkMode && styles.darkInput]}
+            placeholder="Randevu ara..."
+            placeholderTextColor={isDarkMode ? '#999' : '#666'}
           value={searchText}
           onChangeText={setSearchText}
         />
       </View>
+      </Animated.View>
 
-      {/* Action Buttons */}
-      <View style={commonStyles.actionButtons}>
-        <TouchableOpacity 
-          style={[commonStyles.buttonSecondary, { flex: 0.3 }]}
-          onPress={loadAppointments}
-          disabled={loading}
-        >
-          <Text style={commonStyles.buttonTextSecondary}>🔄 Yenile</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[commonStyles.buttonPrimary, { flex: 0.7 }]}
-          onPress={() => onAddAppointment()}
-        >
-          <Text style={commonStyles.buttonText}>➕ Yeni Randevu Ekle</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Randevu Listesi */}
-      <ScrollView style={commonStyles.listContainer}>
+      {/* Appointment List with Pull to Refresh */}
+      <ScrollView 
+        style={styles.listContainer}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+            title="Yenileniyor..."
+            titleColor={isDarkMode ? colors.textDark.secondary : colors.text.secondary}
+          />
+        }
+      >
         {loading ? (
           <View style={commonStyles.loadingContainer}>
             <ActivityIndicator size="large" color="#6366f1" />
@@ -496,6 +527,104 @@ const AppointmentListScreen: React.FC<AppointmentListScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Container styles
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  darkContainer: {
+    backgroundColor: colors.backgroundDark,
+  },
+
+  // Modern Tab Bar
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xs,
+    ...shadows.level1,
+  },
+  darkTabContainer: {
+    backgroundColor: colors.surfaceDark,
+  },
+
+  tabButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  darkTabButton: {
+    backgroundColor: 'transparent',
+  },
+  darkTabButtonActive: {
+    backgroundColor: colors.primary,
+  },
+
+  tabButtonText: {
+    ...typography.labelMedium,
+    color: colors.text.secondary,
+    fontWeight: '500',
+  },
+  tabButtonTextActive: {
+    color: colors.onPrimary,
+    fontWeight: '600',
+  },
+  darkTabButtonText: {
+    color: colors.textDark.secondary,
+  },
+  darkTabButtonTextActive: {
+    color: colors.onPrimary,
+  },
+
+  // Modern search container
+  searchContainer: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  searchInputContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xxl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...shadows.level1,
+  },
+  darkInputContainer: {
+    backgroundColor: colors.surfaceDark,
+    borderColor: colors.outlineDark,
+  },
+  searchIcon: {
+    fontSize: iconSizes.md,
+    marginRight: spacing.sm,
+    opacity: 0.6,
+    color: colors.text.tertiary,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.bodyMedium,
+    color: colors.text.primary,
+  },
+  darkInput: {
+    color: colors.textDark.primary,
+  },
+
+  // List container
+  listContainer: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+
   // Custom appointment card layout styles
   darkCard: {
     backgroundColor: '#262626',

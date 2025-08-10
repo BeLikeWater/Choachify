@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { Patient, Measurement } from '../types';
@@ -186,26 +187,31 @@ const MeasurementDetailScreen: React.FC<MeasurementDetailScreenProps> = ({
   ];
 
   return (
-    <View style={[styles.container, isDarkMode && styles.darkContainer]}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>← Geri</Text>
+    <SafeAreaView style={[styles.safeContainer, isDarkMode && styles.darkSafeContainer]}>
+      {/* Fixed Header */}
+      <View style={[styles.fixedHeader, isDarkMode && styles.darkHeader]}>
+        <TouchableOpacity onPress={onBack} style={styles.headerLeftButton}>
+          <Text style={styles.headerLeftIcon}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={[styles.title, isDarkMode && styles.darkText]}>
-            📊 Ölçüm Takibi
+        
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, isDarkMode && styles.darkHeaderTitle]}>
+            Ölçüm Takibi
           </Text>
-          <Text style={[styles.subtitle, isDarkMode && styles.darkSubtitle]}>
+          <Text style={[styles.headerSubtitle, isDarkMode && styles.darkHeaderSubtitle]}>
             {patient.firstName} {patient.lastName}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
+        
+        <TouchableOpacity 
           onPress={() => onAddMeasurement(patient)}
+          style={styles.headerRightButton}
         >
-          <Text style={styles.addButtonText}>+ Ekle</Text>
+          <Text style={styles.headerRightText}>Ekle</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={[styles.container, isDarkMode && styles.darkContainer]}>
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -398,67 +404,95 @@ const MeasurementDetailScreen: React.FC<MeasurementDetailScreenProps> = ({
           )}
         </ScrollView>
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // SafeArea
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  darkSafeContainer: {
+    backgroundColor: '#0f172a',
+  },
+  
+  // Fixed Header
+  fixedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  darkHeader: {
+    backgroundColor: '#1e293b',
+    borderBottomColor: '#475569',
+  },
+  
+  headerLeftButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  headerLeftIcon: {
+    fontSize: 20,
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  darkHeaderTitle: {
+    color: '#f1f5f9',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  darkHeaderSubtitle: {
+    color: '#94a3b8',
+  },
+  
+  headerRightButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  headerRightText: {
+    fontSize: 16,
+    color: '#22c55e',
+    fontWeight: '600',
+  },
+  
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
   darkContainer: {
     backgroundColor: '#1a1a1a',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  backButton: {
-    padding: 12,
-    minWidth: 60,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007bff',
-    fontWeight: '600',
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#212529',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginTop: 2,
-  },
-  addButton: {
-    backgroundColor: '#007bff',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    minWidth: 60,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   darkText: {
     color: '#ffffff',

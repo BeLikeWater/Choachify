@@ -10,15 +10,18 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
 } from 'react-native';
 import { Patient } from '../types';
 
 interface AddPatientScreenProps {
+  doctorId: string; // Doktor ID'si eklendi
   onSave: (patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
 }
 
 const AddPatientScreen: React.FC<AddPatientScreenProps> = ({
+  doctorId,
   onSave,
   onCancel,
 }) => {
@@ -101,13 +104,27 @@ const AddPatientScreen: React.FC<AddPatientScreenProps> = ({
     const weight = Number(formData.weight);
     const bmi = calculateBMI(height, weight);
 
+    // Yaş hesaplama
+    const calculateAge = (birthDate: string): number => {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    };
+
     const patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'> = {
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
+      age: calculateAge(formData.birthDate),
       birthDate: formData.birthDate,
       gender: formData.gender,
       phone: formData.phone.trim(),
       email: formData.email.trim().toLowerCase(),
+      doctorId, // Doktor ID'si eklendi
       height,
       weight,
       bmi,
@@ -117,9 +134,9 @@ const AddPatientScreen: React.FC<AddPatientScreenProps> = ({
         ...(formData.hemoglobin && { hemoglobin: Number(formData.hemoglobin) }),
         lastUpdated: new Date().toISOString().split('T')[0],
       },
-      allergies: formData.allergies ? formData.allergies.split(',').map(a => a.trim()).filter(a => a) : [],
-      medicalHistory: formData.medicalHistory ? formData.medicalHistory.split(',').map(h => h.trim()).filter(h => h) : [],
-      medications: formData.medications ? formData.medications.split(',').map(m => m.trim()).filter(m => m) : [],
+      allergies: formData.allergies || undefined,
+      medicalHistory: formData.medicalHistory || undefined,
+      currentMedications: formData.medications || undefined,
       lifestyle: {
         sleepHours: formData.sleepHours ? Number(formData.sleepHours) : 8,
         exerciseFrequency: formData.exerciseFrequency,
@@ -261,15 +278,37 @@ const AddPatientScreen: React.FC<AddPatientScreenProps> = ({
   );
 
   return (
-    <KeyboardAvoidingView 
-      style={[styles.container, isDarkMode && styles.darkContainer]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.header}>
-        <Text style={[styles.title, isDarkMode && styles.darkText]}>
-          👤 Yeni Hasta Ekle
-        </Text>
+    <SafeAreaView style={[styles.safeContainer, isDarkMode && styles.darkSafeContainer]}>
+      {/* Fixed Header */}
+      <View style={[styles.fixedHeader, isDarkMode && styles.darkHeader]}>
+        {/* Sol: Geri Butonu */}
+        <TouchableOpacity 
+          onPress={onCancel} 
+          style={styles.headerLeftButton}
+        >
+          <Text style={styles.headerLeftIcon}>←</Text>
+        </TouchableOpacity>
+
+        {/* Orta: Başlık */}
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, isDarkMode && styles.darkHeaderTitle]}>
+            Yeni Hasta Ekle
+          </Text>
+        </View>
+
+        {/* Sağ: Kaydet Butonu */}
+        <TouchableOpacity 
+          onPress={handleSave}
+          style={styles.headerRightButton}
+        >
+          <Text style={styles.headerRightText}>Kaydet</Text>
+        </TouchableOpacity>
       </View>
+
+      <KeyboardAvoidingView 
+        style={[styles.container, isDarkMode && styles.darkContainer]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
 
       <ScrollView style={styles.scrollContainer}>
         {renderSection('👤 Kimlik Bilgileri', (
@@ -354,44 +393,90 @@ const AddPatientScreen: React.FC<AddPatientScreenProps> = ({
           </>
         ))}
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={[styles.button, styles.cancelButton]}
-            onPress={onCancel}
-          >
-            <Text style={styles.cancelButtonText}>❌ İptal</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, styles.saveButton]}
-            onPress={handleSave}
-          >
-            <Text style={styles.saveButtonText}>✅ Kaydet</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // SafeArea - iPhone notch uyumluluğu
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  darkSafeContainer: {
+    backgroundColor: '#0f172a',
+  },
+  
+  // Fixed Header
+  fixedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  darkHeader: {
+    backgroundColor: '#1e293b',
+    borderBottomColor: '#475569',
+  },
+  
+  // Header Butonları
+  headerLeftButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  headerLeftIcon: {
+    fontSize: 20,
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  darkHeaderTitle: {
+    color: '#f1f5f9',
+  },
+  
+  headerRightButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  headerRightText: {
+    fontSize: 16,
+    color: '#22c55e',
+    fontWeight: '600',
+  },
+  
+  // Container
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
   darkContainer: {
     backgroundColor: '#1a1a1a',
-  },
-  header: {
-    padding: 20,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#212529',
   },
   darkText: {
     color: '#ffffff',
@@ -521,34 +606,6 @@ const styles = StyleSheet.create({
   },
   selectedStressButtonText: {
     color: '#dc3545',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#6c757d',
-  },
-  saveButton: {
-    backgroundColor: '#28a745',
-  },
-  cancelButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  saveButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

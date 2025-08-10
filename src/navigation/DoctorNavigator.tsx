@@ -13,15 +13,12 @@ import DietDetailScreen from '../screens/DietDetailScreen';
 import DietPlanViewScreen from '../screens/DietPlanViewScreen';
 import DoctorPendingApprovalsScreen from '../screens/DoctorPendingApprovalsScreen';
 import { PatientDetailScreen } from '../screens/PatientDetailScreen';
+import TimeManagementScreen from '../screens/TimeManagementScreen';
 import { Patient, Appointment, Measurement, DietPlan, User } from '../types';
 import { PatientService } from '../services/patientService';
 import { AuthService } from '../services/authService';
 import { uploadMockDataToFirebase } from '../utils/uploadMockData';
 import { mockPatients } from '../data/mockData';
-import { testFirebaseConnection } from '../utils/testFirebase';
-import { simpleFirebaseTest } from '../utils/simpleFirebaseTest';
-import { debugFirebaseOperations } from '../utils/debugFirebase';
-import { testInternetConnection, testFirebaseNetworkAccess } from '../utils/networkTest';
 
 interface DoctorNavigatorProps {
   user: User;
@@ -30,7 +27,8 @@ interface DoctorNavigatorProps {
 
 const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => {
   const isDarkMode = useColorScheme() === 'dark';
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'patients' | 'appointments' | 'measurements' | 'diets'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'patients' | 'appointments' | 'timeManagement'>('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [showAddAppointment, setShowAddAppointment] = useState(false);
   const [showAddMeasurement, setShowAddMeasurement] = useState(false);
@@ -39,6 +37,7 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
   const [showDietDetail, setShowDietDetail] = useState(false);
   const [showDietPlanView, setShowDietPlanView] = useState(false);
   const [showPatientDetail, setShowPatientDetail] = useState(false);
+  const [showTimeManagement, setShowTimeManagement] = useState(false);
   const [selectedPatientForAppointment, setSelectedPatientForAppointment] = useState<Patient | undefined>();
   const [selectedPatientForPatientDetail, setSelectedPatientForPatientDetail] = useState<Patient | undefined>();
   const [selectedPatientForMeasurement, setSelectedPatientForMeasurement] = useState<Patient | undefined>();
@@ -52,65 +51,27 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
   const [dietPlans, setDietPlans] = useState<DietPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Firebase'den hastaları yükle
+  // Firebase'den hastaları yükle (doktora özel)
   const loadPatients = async () => {
     try {
       setLoading(true);
-      const fetchedPatients = await PatientService.getAllPatients();
+      console.log('🔍 Loading patients for doctor:', user.id);
+      
+      const fetchedPatients = await PatientService.getPatientsByDoctorFromUsers(user.id);
+      console.log(`📋 Loaded ${fetchedPatients.length} patients`);
+      
       setPatients(fetchedPatients);
     } catch (error) {
-      console.error('Hastalar yüklenemedi:', error);
+      console.error('❌ Hastalar yüklenemedi:', error);
       Alert.alert('Hata', 'Hastalar yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Uygulama başladığında Firebase bağlantısını test et ve hastaları yükle
+  // Uygulama başladığında hastaları yükle
   useEffect(() => {
-    const initializeApp = async () => {
-      // Önce internet bağlantısını test et
-      console.log('🌐 İnternet bağlantısı kontrol ediliyor...');
-      const internetResult = await testInternetConnection();
-      
-      if (!internetResult) {
-        Alert.alert('İnternet Hatası', 'İnternet bağlantısı yok. Lütfen bağlantınızı kontrol edin.');
-        setLoading(false);
-        return;
-      }
-      
-      // Firebase network erişimini test et
-      console.log('🔥 Firebase network erişimi test ediliyor...');
-      const firebaseNetworkResult = await testFirebaseNetworkAccess();
-      
-      // Debug işlemlerini çalıştır
-      console.log('🚀 Firebase debug işlemleri başlatılıyor...');
-      const debugResult = await debugFirebaseOperations();
-      
-      if (debugResult) {
-        console.log('✅ Firebase debug testleri başarılı');
-        await loadPatients();
-      } else {
-        console.log('❌ Firebase debug testleri başarısız');
-        Alert.alert(
-          'Firebase Debug Hatası', 
-          'Firebase temel işlemleri başarısız. Konsol loglarını kontrol edin.',
-          [
-            { text: 'Offline Devam Et', onPress: () => setLoading(false) },
-            { text: 'Yeniden Dene', onPress: () => initializeApp() },
-            { 
-              text: 'Mock Veri Yükle', 
-              onPress: () => {
-                setPatients([...mockPatients.map(p => ({...p, id: Date.now().toString() + Math.random()}))]);
-                setLoading(false);
-              } 
-            }
-          ]
-        );
-      }
-    };
-    
-    initializeApp();
+    loadPatients();
   }, []);
 
   const handleAddPatient = async (patientData: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -120,6 +81,9 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
       setShowAddPatient(false);
       setCurrentTab('patients');
       Alert.alert('Başarılı', 'Hasta başarıyla kaydedildi!');
+      
+      // Liste yenile
+      await loadPatients();
     } catch (error) {
       console.error('Hasta eklenemedi:', error);
       Alert.alert('Hata', 'Hasta kaydedilirken bir hata oluştu.');
@@ -237,6 +201,7 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
   if (showAddPatient) {
     return (
       <AddPatientScreen
+        doctorId={user.id}
         onSave={handleAddPatient}
         onCancel={() => setShowAddPatient(false)}
       />
@@ -339,6 +304,15 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
     );
   }
 
+  if (showTimeManagement) {
+    return (
+      <TimeManagementScreen
+        user={user}
+        onBack={() => setShowTimeManagement(false)}
+      />
+    );
+  }
+
   const handleLogout = async () => {
     Alert.alert(
       'Çıkış Yap',
@@ -360,25 +334,209 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
     );
   };
 
+
+  const handleTabChange = (tab: 'dashboard' | 'patients' | 'appointments' | 'timeManagement') => {
+    if (tab === 'timeManagement') {
+      setShowTimeManagement(true);
+    } else {
+      setCurrentTab(tab);
+    }
+    setSidebarOpen(false); // Menüyü kapat
+  };
+
+  // Ekran adlarını al
+  const getScreenTitle = () => {
+    if (showAddPatient) return 'Yeni Hasta Ekle';
+    if (showAddAppointment) return 'Yeni Randevu';
+    if (showAddMeasurement) return 'Yeni Ölçüm';
+    if (showMeasurementDetail) return 'Ölçüm Detayları';
+    if (showAddDietPlan) return 'Yeni Diyet Planı';
+    if (showDietDetail) return 'Diyet Planları';
+    if (showPatientDetail) return 'Hasta Detayları';
+    if (showDietPlanView) return 'Diyet Planı';
+    if (showTimeManagement) return 'Zaman Yönetimi';
+    
+    switch (currentTab) {
+      case 'dashboard': return 'Dashboard';
+      case 'patients': return 'Hastalar';
+      case 'appointments': return 'Randevular';
+      default: return 'Coachify';
+    }
+  };
+
+  // Geri butonu gerekli mi?
+  const needsBackButton = () => {
+    return showAddPatient || showAddAppointment || showAddMeasurement || 
+           showMeasurementDetail || showAddDietPlan || showDietDetail || 
+           showPatientDetail || showDietPlanView || showTimeManagement;
+  };
+
+  // Sağ taraftaki işlem butonları
+  const getRightActions = () => {
+    if (needsBackButton()) return null;
+    
+    switch (currentTab) {
+      case 'dashboard':
+        return (
+          <TouchableOpacity onPress={handleLogout} style={styles.headerActionButton}>
+            <Text style={styles.headerActionIcon}>⬅️</Text>
+          </TouchableOpacity>
+        );
+      case 'patients':
+        return (
+          <TouchableOpacity onPress={() => setShowAddPatient(true)} style={styles.headerActionButton}>
+            <Text style={styles.headerActionIcon}>➕</Text>
+          </TouchableOpacity>
+        );
+      case 'appointments':
+        return (
+          <TouchableOpacity onPress={handleAddAppointmentFromList} style={styles.headerActionButton}>
+            <Text style={styles.headerActionIcon}>➕</Text>
+          </TouchableOpacity>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Geri butonu işlemi
+  const handleBackPress = () => {
+    if (showAddPatient) setShowAddPatient(false);
+    else if (showAddAppointment) {
+      setShowAddAppointment(false);
+      setSelectedPatientForAppointment(undefined);
+    }
+    else if (showAddMeasurement) {
+      setShowAddMeasurement(false);
+      setSelectedPatientForMeasurement(undefined);
+    }
+    else if (showMeasurementDetail) {
+      setShowMeasurementDetail(false);
+      setSelectedPatientForDetail(undefined);
+    }
+    else if (showAddDietPlan) {
+      setShowAddDietPlan(false);
+      setSelectedPatientForDiet(undefined);
+    }
+    else if (showDietDetail) {
+      setShowDietDetail(false);
+      setSelectedPatientForDietDetail(undefined);
+    }
+    else if (showPatientDetail) setShowPatientDetail(false);
+    else if (showDietPlanView) {
+      setShowDietPlanView(false);
+      setSelectedDietPlan(undefined);
+      setShowDietDetail(true);
+    }
+    else if (showTimeManagement) setShowTimeManagement(false);
+  };
+
   return (
-    <SafeAreaView style={[commonStyles.safeArea, isDarkMode && commonStyles.darkSafeArea]}>
-      {/* Header */}
-      <View style={[commonStyles.headerRow, isDarkMode && styles.darkHeader]}>
-        <View style={styles.userInfo}>
-          <Text style={[commonStyles.caption, isDarkMode && commonStyles.darkSubtitle]}>
-            Hoş geldiniz,
+    <SafeAreaView style={[styles.safeContainer, isDarkMode && styles.darkSafeContainer]}>
+      {/* Fixed Header - Tüm ekranlarda */}
+      <View style={[styles.fixedHeader, isDarkMode && styles.darkHeader]}>
+        {/* Sol: Menu/Geri Butonu */}
+        <TouchableOpacity 
+          onPress={needsBackButton() ? handleBackPress : () => setSidebarOpen(!sidebarOpen)} 
+          style={styles.headerLeftButton}
+        >
+          <Text style={styles.headerLeftIcon}>
+            {needsBackButton() ? '←' : '☰'}
           </Text>
-          <Text style={[commonStyles.title, isDarkMode && commonStyles.darkText]}>
-            Dr. {user.firstName} {user.lastName}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={handleLogout} style={commonStyles.buttonDanger}>
-          <Text style={commonStyles.buttonText}>🚪 Çıkış</Text>
         </TouchableOpacity>
+
+        {/* Orta: Ekran Başlığı */}
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, isDarkMode && styles.darkHeaderTitle]}>
+            {getScreenTitle()}
+          </Text>
+          {currentTab === 'dashboard' && !needsBackButton() && (
+            <Text style={[styles.headerSubtitle, isDarkMode && styles.darkHeaderSubtitle]}>
+              Dr. {user.firstName} {user.lastName}
+            </Text>
+          )}
+        </View>
+
+        {/* Sağ: İşlem Butonları */}
+        <View style={styles.headerRight}>
+          {getRightActions()}
+        </View>
       </View>
 
-      {/* Tab Content */}
-      <View style={styles.content}>
+      {/* Overlay Sidebar - Accordion Style */}
+      {sidebarOpen && (
+        <>
+          {/* Backdrop */}
+          <TouchableOpacity 
+            style={styles.backdrop}
+            onPress={() => setSidebarOpen(false)}
+            activeOpacity={1}
+          />
+          
+          {/* Accordion Menu */}
+          <View style={[styles.accordionMenu, isDarkMode && styles.darkAccordionMenu]}>
+            <TouchableOpacity
+              style={styles.accordionItem}
+              onPress={() => handleTabChange('dashboard')}
+            >
+              <Text style={styles.accordionIcon}>📊</Text>
+              <Text style={[styles.accordionText, isDarkMode && styles.darkAccordionText]}>
+                Dashboard
+              </Text>
+              {currentTab === 'dashboard' && (
+                <View style={styles.activeIndicator} />
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.accordionDivider} />
+
+            <TouchableOpacity
+              style={styles.accordionItem}
+              onPress={() => handleTabChange('patients')}
+            >
+              <Text style={styles.accordionIcon}>👥</Text>
+              <Text style={[styles.accordionText, isDarkMode && styles.darkAccordionText]}>
+                Hastalar
+              </Text>
+              {currentTab === 'patients' && (
+                <View style={styles.activeIndicator} />
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.accordionDivider} />
+
+            <TouchableOpacity
+              style={styles.accordionItem}
+              onPress={() => handleTabChange('appointments')}
+            >
+              <Text style={styles.accordionIcon}>📅</Text>
+              <Text style={[styles.accordionText, isDarkMode && styles.darkAccordionText]}>
+                Randevular
+              </Text>
+              {currentTab === 'appointments' && (
+                <View style={styles.activeIndicator} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.accordionItem}
+              onPress={() => handleTabChange('timeManagement')}
+            >
+              <Text style={styles.accordionIcon}>🕒</Text>
+              <Text style={[styles.accordionText, isDarkMode && styles.darkAccordionText]}>
+                Zaman Yönetimi
+              </Text>
+              {showTimeManagement && (
+                <View style={styles.activeIndicator} />
+              )}
+            </TouchableOpacity>
+
+          </View>
+        </>
+      )}
+
+      {/* Content Area */}
+      <View style={styles.contentArea}>
         {currentTab === 'dashboard' ? (
           <DashboardScreen />
         ) : currentTab === 'patients' ? (
@@ -391,6 +549,7 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             onAddAppointment={handleAddAppointmentFromPatient}
             onViewMeasurements={handleViewMeasurements}
             onViewDietPlans={handleViewDietPlans}
+            onRefresh={loadPatients}
           />
         ) : currentTab === 'appointments' ? (
           <AppointmentListScreen
@@ -399,237 +558,200 @@ const DoctorNavigator: React.FC<DoctorNavigatorProps> = ({ user, onLogout }) => 
             onAppointmentPress={handleAppointmentPress}
             onAddAppointment={handleAddAppointmentFromList}
           />
-        ) : currentTab === 'measurements' ? (
-          <View style={[commonStyles.container, isDarkMode && commonStyles.darkContainer]}>
-            <View style={commonStyles.header}>
-              <Text style={[commonStyles.titleLarge, isDarkMode && commonStyles.darkText]}>
-                📊 Ölçüm Takibi
-              </Text>
-              <Text style={[commonStyles.subtitle, isDarkMode && commonStyles.darkSubtitle]}>
-                Hasta seçin veya yeni ölçüm ekleyin
-              </Text>
-            </View>
-            
-            <TouchableOpacity 
-              style={commonStyles.buttonSuccess}
-              onPress={handleAddMeasurementFromList}
-            >
-              <Text style={commonStyles.buttonText}>➕ Yeni Ölçüm Ekle</Text>
-            </TouchableOpacity>
-
-            <ScrollView style={commonStyles.listContainer}>
-              {patients.map((patient) => (
-                <TouchableOpacity
-                  key={patient.id}
-                  style={[commonStyles.card, isDarkMode && styles.darkCard]}
-                  onPress={() => handleViewMeasurements(patient)}
-                >
-                  <Text style={[commonStyles.title, isDarkMode && commonStyles.darkText]}>
-                    {patient.firstName} {patient.lastName}
-                  </Text>
-                  <Text style={[commonStyles.caption, isDarkMode && commonStyles.darkSubtitle]}>
-                    👤 {patient.age} yaşında • {patient.gender}
-                  </Text>
-                  <Text style={[styles.viewMeasurementsText, isDarkMode && commonStyles.darkSubtitle]}>
-                    📊 Ölçümleri Görüntüle
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        ) : (
-          <View style={[commonStyles.container, isDarkMode && commonStyles.darkContainer]}>
-            <View style={commonStyles.header}>
-              <Text style={[commonStyles.titleLarge, isDarkMode && commonStyles.darkText]}>
-                🥗 Diyet Takibi
-              </Text>
-              <Text style={[commonStyles.subtitle, isDarkMode && commonStyles.darkSubtitle]}>
-                Hasta seçin veya yeni diyet planı ekleyin
-              </Text>
-            </View>
-            
-            <TouchableOpacity 
-              style={[commonStyles.buttonPrimary, { backgroundColor: '#fd7e14' }]}
-              onPress={handleAddDietPlanFromList}
-            >
-              <Text style={commonStyles.buttonText}>➕ Yeni Diyet Planı Ekle</Text>
-            </TouchableOpacity>
-
-            <ScrollView style={commonStyles.listContainer}>
-              {patients.map((patient) => (
-                <TouchableOpacity
-                  key={patient.id}
-                  style={[commonStyles.card, isDarkMode && styles.darkCard]}
-                  onPress={() => handleViewDietPlans(patient)}
-                >
-                  <Text style={[commonStyles.title, isDarkMode && commonStyles.darkText]}>
-                    {patient.firstName} {patient.lastName}
-                  </Text>
-                  <Text style={[commonStyles.caption, isDarkMode && commonStyles.darkSubtitle]}>
-                    👤 {patient.age} yaşında • {patient.gender}
-                  </Text>
-                  <Text style={[styles.viewMeasurementsText, { color: '#fd7e14' }, isDarkMode && commonStyles.darkSubtitle]}>
-                    🥗 Diyet Planlarını Görüntüle
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        ) : null}
       </View>
 
-      {/* Bottom Tab Bar */}
-      <View style={[commonStyles.tabContainer, { flexDirection: 'row', backgroundColor: '#ffffff', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingBottom: 20, paddingTop: 10 }, isDarkMode && styles.darkTabBar]}>
-        <TouchableOpacity
-          style={[
-            commonStyles.tabButton,
-            currentTab === 'dashboard' && commonStyles.tabButtonActive,
-          ]}
-          onPress={() => setCurrentTab('dashboard')}
-        >
-          <Text style={[
-            styles.tabIcon,
-            currentTab === 'dashboard' && styles.activeTabText,
-          ]}>
-            📊
-          </Text>
-          <Text style={[
-            commonStyles.tabButtonText,
-            currentTab === 'dashboard' && commonStyles.tabButtonTextActive,
-          ]}>
-            Dashboard
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            commonStyles.tabButton,
-            currentTab === 'patients' && commonStyles.tabButtonActive,
-          ]}
-          onPress={() => setCurrentTab('patients')}
-        >
-          <Text style={[
-            styles.tabIcon,
-            currentTab === 'patients' && styles.activeTabText,
-          ]}>
-            👥
-          </Text>
-          <Text style={[
-            commonStyles.tabButtonText,
-            currentTab === 'patients' && commonStyles.tabButtonTextActive,
-          ]}>
-            Hastalar
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            commonStyles.tabButton,
-            currentTab === 'appointments' && commonStyles.tabButtonActive,
-          ]}
-          onPress={() => setCurrentTab('appointments')}
-        >
-          <Text style={[
-            styles.tabIcon,
-            currentTab === 'appointments' && styles.activeTabText,
-          ]}>
-            📅
-          </Text>
-          <Text style={[
-            commonStyles.tabButtonText,
-            currentTab === 'appointments' && commonStyles.tabButtonTextActive,
-          ]}>
-            Randevular
-          </Text>
-        </TouchableOpacity>
-
-
-        <TouchableOpacity
-          style={[
-            commonStyles.tabButton,
-            currentTab === 'measurements' && commonStyles.tabButtonActive,
-          ]}
-          onPress={() => setCurrentTab('measurements')}
-        >
-          <Text style={[
-            styles.tabIcon,
-            currentTab === 'measurements' && styles.activeTabText,
-          ]}>
-            📊
-          </Text>
-          <Text style={[
-            commonStyles.tabButtonText,
-            currentTab === 'measurements' && commonStyles.tabButtonTextActive,
-          ]}>
-            Ölçümler
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            commonStyles.tabButton,
-            currentTab === 'diets' && commonStyles.tabButtonActive,
-          ]}
-          onPress={() => setCurrentTab('diets')}
-        >
-          <Text style={[
-            styles.tabIcon,
-            currentTab === 'diets' && styles.activeTabText,
-          ]}>
-            🥗
-          </Text>
-          <Text style={[
-            commonStyles.tabButtonText,
-            currentTab === 'diets' && commonStyles.tabButtonTextActive,
-          ]}>
-            Diyet
-          </Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 };
-
-  const handleLogout = async () => {
-    Alert.alert(
-      'Çıkış Yap',
-      'Hesabınızdan çıkmak istediğinizden emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Çıkış Yap',
-          onPress: async () => {
-            try {
-              await AuthService.logout();
-              onLogout();
-            } catch (error) {
-              Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu');
-            }
-          },
-        },
-      ]
-    );
-  };
 
 const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
   
-  darkTabBar: {
-    backgroundColor: '#262626',
-    borderTopColor: '#404040',
+  // SafeArea - iPhone notch uyumluluğu
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  darkSafeContainer: {
+    backgroundColor: '#0f172a',
   },
   
-  tabIcon: {
+  // Fixed Header - Tüm ekranlarda sabit
+  fixedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 100,
+  },
+  darkHeader: {
+    backgroundColor: '#1e293b',
+    borderBottomColor: '#475569',
+  },
+  
+  // Sol Menu/Geri Butonu
+  headerLeftButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  headerLeftIcon: {
     fontSize: 20,
-    marginBottom: 4,
-    opacity: 0.7,
+    color: '#667eea',
+    fontWeight: '600',
   },
   
-  activeTabText: {
-    color: '#6366f1',
+  // Orta Başlık Alanı
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#1e293b',
+    textAlign: 'center',
+  },
+  darkHeaderTitle: {
+    color: '#f1f5f9',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  darkHeaderSubtitle: {
+    color: '#94a3b8',
+  },
+  
+  // Sağ İşlem Butonları
+  headerRight: {
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  headerActionButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  headerActionIcon: {
+    fontSize: 18,
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  
+  // Overlay Accordion Menu
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 1000,
+  },
+  
+  accordionMenu: {
+    position: 'absolute',
+    top: 95, // Header'ın altına pozisyon
+    left: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingVertical: 8,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1001,
+  },
+  darkAccordionMenu: {
+    backgroundColor: '#1e293b',
+  },
+  
+  accordionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    position: 'relative',
+  },
+  
+  accordionIcon: {
+    fontSize: 18,
+    marginRight: 12,
+    opacity: 0.8,
+  },
+  
+  accordionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#374151',
+    flex: 1,
+  },
+  darkAccordionText: {
+    color: '#f3f4f6',
+  },
+  
+  accordionDivider: {
+    height: 1,
+    backgroundColor: '#e5e7eb',
+    marginHorizontal: 16,
+  },
+  
+  activeIndicator: {
+    position: 'absolute',
+    right: 16,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#667eea',
+  },
+  
+  // Content area - full width
+  contentArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  
+  // Legacy styles for compatibility
+  darkCard: {
+    backgroundColor: '#262626',
+  },
+  
+  logoutButton: {
+    padding: 12,
+    borderRadius: 50,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  logoutIcon: {
+    fontSize: 24,
+    color: '#dc3545',
+  },
+  
+  userInfo: {
+    flex: 1,
   },
   
   viewMeasurementsText: {
@@ -638,15 +760,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     marginTop: 4,
-  },
-  
-  darkCard: {
-    backgroundColor: '#262626',
-  },
-  
-  darkHeader: {
-    backgroundColor: '#262626',
-    borderBottomColor: '#404040',
   },
 });
 

@@ -4,6 +4,7 @@ import { User } from '../types';
 import { AuthService } from '../services/authService';
 import PatientProfileScreen from '../screens/PatientProfileScreen';
 import PatientAppointmentsScreen from '../screens/PatientAppointmentsScreen';
+import PatientDietsScreen from '../screens/PatientDietsScreen';
 
 interface PatientNavigatorProps {
   user: User;
@@ -12,7 +13,7 @@ interface PatientNavigatorProps {
 
 const PatientNavigator: React.FC<PatientNavigatorProps> = ({ user, onLogout }) => {
   const isDarkMode = useColorScheme() === 'dark';
-  const [currentTab, setCurrentTab] = useState<'profile' | 'appointments' | 'measurements'>('profile');
+  const [currentTab, setCurrentTab] = useState<'profile' | 'appointments' | 'diets' | 'measurements'>('profile');
 
   const handleLogout = async () => {
     Alert.alert(
@@ -58,6 +59,8 @@ const PatientNavigator: React.FC<PatientNavigatorProps> = ({ user, onLogout }) =
           <PatientProfileScreen user={user} />
         ) : currentTab === 'appointments' ? (
           <PatientAppointmentsScreen user={user} />
+        ) : currentTab === 'diets' ? (
+          <PatientDietsScreen user={user} />
         ) : (
           <View style={styles.comingSoon}>
             <Text style={[styles.comingSoonText, isDarkMode && styles.darkText]}>
@@ -115,6 +118,29 @@ const PatientNavigator: React.FC<PatientNavigatorProps> = ({ user, onLogout }) =
             currentTab === 'appointments' && styles.activeTabText,
           ]}>
             Randevular
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            currentTab === 'diets' && styles.activeTab,
+            currentTab === 'diets' && isDarkMode && styles.darkActiveTab,
+          ]}
+          onPress={() => setCurrentTab('diets')}
+        >
+          <Text style={[
+            styles.tabIcon,
+            currentTab === 'diets' && styles.activeTabText,
+          ]}>
+            🥗
+          </Text>
+          <Text style={[
+            styles.tabLabel,
+            isDarkMode && styles.darkTabLabel,
+            currentTab === 'diets' && styles.activeTabText,
+          ]}>
+            Diyet
           </Text>
         </TouchableOpacity>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,9 +8,11 @@ import {
   useColorScheme,
   TextInput,
   ActivityIndicator,
+  Animated,
+  RefreshControl,
 } from 'react-native';
-// Using patients from props instead of mock data
 import { Patient } from '../types';
+import { colors, typography, spacing, borderRadius, shadows, cardStyles, buttonStyles, iconSizes } from '../styles/designSystem';
 
 interface PatientListScreenProps {
   patients: Patient[];
@@ -21,6 +23,7 @@ interface PatientListScreenProps {
   onAddAppointment?: (patient: Patient) => void;
   onViewMeasurements?: (patient: Patient) => void;
   onViewDietPlans?: (patient: Patient) => void;
+  onRefresh?: () => void; // Yenileme fonksiyonu eklendi
 }
 
 const PatientListScreen: React.FC<PatientListScreenProps> = ({
@@ -32,9 +35,23 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
   onAddAppointment,
   onViewMeasurements,
   onViewDietPlans,
+  onRefresh,
 }) => {
   const isDarkMode = useColorScheme() === 'dark';
   const [searchText, setSearchText] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const searchBarHeight = useRef(new Animated.Value(60)).current;
+  const lastScrollY = useRef(0);
+
+  // Pull-to-refresh handler
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      setRefreshing(true);
+      await onRefresh();
+      setRefreshing(false);
+    }
+  };
 
   const filteredPatients = patients.filter(patient =>
     patient.firstName.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -54,35 +71,48 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
     return date.toLocaleDateString('tr-TR');
   };
 
+  const handleScroll = (event: any) => {
+    const currentOffset = event.nativeEvent.contentOffset.y;
+    const direction = currentOffset > lastScrollY.current ? 'down' : 'up';
+    const diff = Math.abs(currentOffset - lastScrollY.current);
+    
+    if (diff > 10) { // Minimum scroll difference to trigger
+      if (direction === 'up' && currentOffset > 50) {
+        // Scrolling up - hide search bar
+        Animated.timing(searchBarHeight, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+      } else if (direction === 'down') {
+        // Scrolling down - show search bar
+        Animated.timing(searchBarHeight, {
+          toValue: 60,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+      }
+      lastScrollY.current = currentOffset;
+    }
+  };
+
   return (
     <View style={[styles.container, isDarkMode && styles.darkContainer]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, isDarkMode && styles.darkText]}>
-          👥 Hasta Listesi
-        </Text>
-        <Text style={[styles.subtitle, isDarkMode && styles.darkSubtitle]}>
-          {filteredPatients.length} hasta
-        </Text>
-      </View>
 
-      {/* Arama Çubuğu */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={[styles.searchInput, isDarkMode && styles.darkInput]}
-          placeholder="Hasta ara..."
-          placeholderTextColor={isDarkMode ? '#999' : '#666'}
-          value={searchText}
-          onChangeText={setSearchText}
-        />
-      </View>
+      {/* Arama Çubuğu - Animated */}
+      <Animated.View style={[styles.searchContainer, { height: searchBarHeight }]}>
+        <View style={[styles.searchInputContainer, isDarkMode && styles.darkInputContainer]}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={[styles.searchInput, isDarkMode && styles.darkInput]}
+            placeholder="Hasta ara..."
+            placeholderTextColor={isDarkMode ? '#999' : '#666'}
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+        </View>
+      </Animated.View>
 
-      {/* Yeni Hasta Ekle Butonu */}
-      <TouchableOpacity 
-        style={styles.addButton}
-        onPress={onAddPatient}
-      >
-        <Text style={styles.addButtonText}>➕ Yeni Hasta Ekle</Text>
-      </TouchableOpacity>
 
       {/* Mock Data Upload Butonu (sadece geliştirme amaçlı) */}
       {onUploadMockData && patients.length === 0 && !loading && (
@@ -90,12 +120,25 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
           style={[styles.addButton, styles.mockDataButton]}
           onPress={onUploadMockData}
         >
-          <Text style={styles.addButtonText}>📤 Mock Verileri Yükle</Text>
+          <Text style={[styles.addButtonText, { color: colors.success }]}>📤 Mock Verileri Yükle</Text>
         </TouchableOpacity>
       )}
 
       {/* Hasta Listesi */}
-      <ScrollView style={styles.patientList}>
+      <Animated.ScrollView 
+        style={styles.patientList}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#007bff']} // Android
+            tintColor="#007bff" // iOS
+          />
+        }
+      >
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007bff" />
@@ -103,123 +146,73 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
               Hastalar yükleniyor...
             </Text>
           </View>
-        ) : filteredPatients.map((patient) => {
-          // Optional BMI calculation from old interface, fallback if not available
-          const bmi = patient.bmi || (patient.height && patient.weight ? 
-            Math.round((patient.weight / ((patient.height / 100) ** 2)) * 10) / 10 : null);
-          const bmiStatus = bmi ? getBMIStatus(bmi) : { text: 'N/A', color: '#6c757d' };
-          
-          return (
-            <TouchableOpacity
-              key={patient.id}
-              style={[styles.patientCard, isDarkMode && styles.darkCard]}
-              onPress={() => onPatientPress(patient)}
-            >
-              <View style={styles.patientHeader}>
-                <View style={styles.patientNameRow}>
-                  <Text style={styles.genderIcon}>
-                    {patient.gender === 'Erkek' ? '👨' : '👩'}
-                  </Text>
-                  <View style={styles.nameContainer}>
-                    <Text style={[styles.patientName, isDarkMode && styles.darkText]}>
-                      {patient.firstName} {patient.lastName}
-                    </Text>
-                    <Text style={[styles.patientAge, isDarkMode && styles.darkSubtitle]}>
-                      {patient.age} yaşında
-                    </Text>
-                  </View>
-                </View>
-                
-                {bmi && (
-                  <View style={[styles.bmiBadge, { backgroundColor: bmiStatus.color }]}>
-                    <Text style={styles.bmiText}>
-                      VKİ: {bmi}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.patientInfo}>
-                <View style={styles.infoRow}>
-                  <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
-                    📧 {patient.email}
+        ) : filteredPatients.map((patient, index) => {
+          try {
+            console.log(`Rendering patient ${index}:`, patient);
+            
+            return (
+              <TouchableOpacity
+                key={patient?.id || `patient-${index}`}
+                style={[styles.patientCard, isDarkMode && styles.darkCard]}
+                onPress={() => onPatientPress(patient)}
+              >
+                <View style={styles.patientHeader}>
+                  <Text style={[styles.patientName, isDarkMode && styles.darkText]}>
+                    {String(patient?.firstName || 'Ad Yok')} {String(patient?.lastName || 'Soyad Yok')}
                   </Text>
                 </View>
                 
-                <View style={styles.infoRow}>
+                <View style={styles.patientInfo}>
                   <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
-                    📞 {patient.phone}
+                    📧 {String(patient?.email || 'Email yok')}
                   </Text>
-                </View>
-
-                {patient.address && (
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
-                      📍 {patient.address}
-                    </Text>
-                  </View>
-                )}
-
-                {patient.height && patient.weight && (
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
-                      📏 {patient.height} cm • ⚖️ {patient.weight} kg
-                    </Text>
-                  </View>
-                )}
-
-                {patient.medicalHistory && patient.medicalHistory.length > 0 && (
-                  <View style={styles.infoRow}>
-                    <Text style={[styles.infoLabel, isDarkMode && styles.darkSubtitle]}>
-                      🏥 {patient.medicalHistory}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.dateRow}>
-                  <Text style={[styles.dateText, isDarkMode && styles.darkSubtitle]}>
-                    Son güncelleme: {formatDate(patient.updatedAt)}
-                  </Text>
-                </View>
-
-                {/* Butonlar */}
-                <View style={styles.actionButtons}>
-                  {onAddAppointment && (
-                    <TouchableOpacity
-                      style={styles.appointmentButton}
-                      onPress={() => onAddAppointment(patient)}
-                    >
-                      <Text style={styles.appointmentButtonText}>
-                        📅 Randevu
-                      </Text>
-                    </TouchableOpacity>
-                  )}
                   
-                  {onViewMeasurements && (
-                    <TouchableOpacity
-                      style={styles.measurementButton}
-                      onPress={() => onViewMeasurements(patient)}
-                    >
-                      <Text style={styles.measurementButtonText}>
-                        📊 Ölçümler
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                  
-                  {onViewDietPlans && (
-                    <TouchableOpacity
-                      style={styles.dietButton}
-                      onPress={() => onViewDietPlans(patient)}
-                    >
-                      <Text style={styles.dietButtonText}>
-                        🥗 Diyet
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  {/* Butonlar */}
+                  <View style={styles.actionButtons}>
+                    {onAddAppointment && (
+                      <TouchableOpacity
+                        style={styles.appointmentButton}
+                        onPress={() => onAddAppointment(patient)}
+                      >
+                        <Text style={styles.appointmentButtonText}>
+                          📅 Randevu
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    
+                    {onViewMeasurements && (
+                      <TouchableOpacity
+                        style={styles.measurementButton}
+                        onPress={() => onViewMeasurements(patient)}
+                      >
+                        <Text style={styles.measurementButtonText}>
+                          📊 Ölçümler
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    
+                    {onViewDietPlans && (
+                      <TouchableOpacity
+                        style={styles.dietButton}
+                        onPress={() => onViewDietPlans(patient)}
+                      >
+                        <Text style={styles.dietButtonText}>
+                          🥗 Diyet
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
+              </TouchableOpacity>
+            );
+          } catch (error) {
+            console.error(`Error rendering patient ${index}:`, error);
+            return (
+              <View key={`error-${index}`} style={styles.patientCard}>
+                <Text style={styles.infoLabel}>Hasta render hatası</Text>
               </View>
-            </TouchableOpacity>
-          );
+            );
+          }
         })}
 
         {!loading && filteredPatients.length === 0 && (
@@ -232,7 +225,7 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
             </Text>
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 };
@@ -240,84 +233,73 @@ const PatientListScreen: React.FC<PatientListScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: colors.background,
   },
   darkContainer: {
-    backgroundColor: '#1a1a1a',
-  },
-  header: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#212529',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6c757d',
+    backgroundColor: colors.backgroundDark,
   },
   darkText: {
-    color: '#ffffff',
+    color: colors.textDark.primary,
   },
   darkSubtitle: {
-    color: '#adb5bd',
+    color: colors.textDark.secondary,
   },
+  
+  // Modern search container
   searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  searchInputContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xxl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...shadows.level1,
+  },
+  darkInputContainer: {
+    backgroundColor: colors.surfaceDark,
+    borderColor: colors.outlineDark,
+  },
+  searchIcon: {
+    fontSize: iconSizes.md,
+    marginRight: spacing.sm,
+    opacity: 0.6,
+    color: colors.text.tertiary,
   },
   searchInput: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    flex: 1,
+    ...typography.bodyMedium,
+    color: colors.text.primary,
   },
   darkInput: {
-    backgroundColor: '#2d2d2d',
-    borderColor: '#444',
-    color: '#ffffff',
+    color: colors.textDark.primary,
   },
-  addButton: {
-    backgroundColor: '#007bff',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  
+  
+  // Modern patient list
   patientList: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.lg,
   },
+  
+  // Modern patient cards
   patientCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...cardStyles.patient,
+    backgroundColor: colors.surface,
   },
   darkCard: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: colors.surfaceDark,
   },
+  
   patientHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   patientNameRow: {
     flexDirection: 'row',
@@ -325,121 +307,130 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   genderIcon: {
-    fontSize: 24,
-    marginRight: 12,
+    fontSize: iconSizes.xl,
+    marginRight: spacing.sm,
   },
   nameContainer: {
     flex: 1,
   },
   patientName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212529',
+    ...typography.titleMedium,
+    color: colors.text.primary,
   },
   patientAge: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginTop: 2,
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
   },
+  
+  // Modern BMI badge
   bmiBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
   },
   bmiText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    ...typography.labelSmall,
+    color: colors.onPrimary,
   },
+  
   patientInfo: {
-    gap: 6,
+    gap: spacing.xs,
   },
   infoRow: {
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   infoLabel: {
-    fontSize: 14,
-    color: '#6c757d',
+    ...typography.bodySmall,
+    color: colors.text.secondary,
   },
+  
+  // Modern divider and date
   dateRow: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+    borderTopColor: colors.outlineVariant,
   },
   dateText: {
-    fontSize: 12,
-    color: '#6c757d',
+    ...typography.bodySmall,
+    color: colors.text.tertiary,
     fontStyle: 'italic',
   },
+  
+  // Empty and loading states
   emptyContainer: {
-    padding: 40,
+    padding: spacing.xxxxl,
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
-    color: '#6c757d',
+    ...typography.bodyLarge,
+    color: colors.text.secondary,
     textAlign: 'center',
+    lineHeight: 24,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: spacing.xxxxl,
   },
   loadingText: {
-    fontSize: 16,
-    color: '#6c757d',
-    marginTop: 16,
+    ...typography.bodyLarge,
+    color: colors.text.secondary,
+    marginTop: spacing.md,
   },
+  
+  // Mock data button - Apple style soft tint
   mockDataButton: {
-    backgroundColor: '#28a745',
-    marginBottom: 10,
+    ...buttonStyles.success,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
   },
+  
+  // Apple-style borderless action buttons
   actionButtons: {
     flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
+    marginTop: spacing.sm,
+    gap: spacing.xs,
   },
   appointmentButton: {
-    backgroundColor: '#17a2b8',
+    backgroundColor: 'rgba(78, 205, 196, 0.08)',
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     alignItems: 'center',
   },
   appointmentButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    ...typography.buttonMicro,
+    color: colors.health,
   },
   measurementButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: 'rgba(81, 207, 102, 0.08)',
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     alignItems: 'center',
   },
   measurementButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    ...typography.buttonMicro,
+    color: colors.success,
   },
   dietButton: {
-    backgroundColor: '#fd7e14',
+    backgroundColor: 'rgba(255, 146, 43, 0.08)',
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
     alignItems: 'center',
   },
   dietButtonText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    ...typography.buttonMicro,
+    color: colors.warning,
   },
+  
 });
 
 export default PatientListScreen;

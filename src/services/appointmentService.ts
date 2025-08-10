@@ -376,6 +376,34 @@ export class AppointmentService {
     }
   }
 
+  // Doktorun belirli tarihteki randevularını getirme
+  static async getDoctorAppointmentsByDate(doctorId: string, date: string): Promise<Appointment[]> {
+    try {
+      console.log('Fetching appointments for doctor on date:', doctorId, date);
+      
+      const q = query(
+        collection(db, COLLECTION_NAME), 
+        where('doctorId', '==', doctorId),
+        where('date', '==', date)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const appointments: Appointment[] = [];
+      querySnapshot.forEach((doc) => {
+        appointments.push({
+          id: doc.id,
+          ...doc.data(),
+        } as Appointment);
+      });
+
+      console.log(`Found ${appointments.length} appointments for doctor on ${date}`);
+      return appointments;
+    } catch (error) {
+      console.error('Doktor günlük randevuları getirilirken hata:', error);
+      throw error;
+    }
+  }
+
   // Randevu durumunu güncelleme
   static async updateAppointmentStatus(
     appointmentId: string, 

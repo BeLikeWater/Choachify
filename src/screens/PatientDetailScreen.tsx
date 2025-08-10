@@ -8,6 +8,7 @@ import {
   Alert,
   StyleSheet,
   useColorScheme,
+  SafeAreaView,
 } from 'react-native';
 import { Patient } from '../types';
 import { PatientService } from '../services/patientService';
@@ -109,21 +110,32 @@ export const PatientDetailScreen: React.FC<PatientDetailScreenProps> = ({
   };
 
   return (
-    <View style={[styles.container, isDarkMode && styles.darkContainer]}>
-      <View style={[styles.header, isDarkMode && styles.darkHeader]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={[styles.backButtonText, isDarkMode && styles.darkText]}>← Geri</Text>
+    <SafeAreaView style={[styles.safeContainer, isDarkMode && styles.darkSafeContainer]}>
+      {/* Modern Fixed Header */}
+      <View style={[styles.fixedHeader, isDarkMode && styles.darkHeader]}>
+        {/* Sol: Geri Butonu */}
+        <TouchableOpacity 
+          onPress={onBack} 
+          style={styles.headerLeftButton}
+        >
+          <Text style={styles.headerLeftIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, isDarkMode && styles.darkText]}>
-          Hasta Detayları
-        </Text>
+
+        {/* Orta: Başlık */}
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, isDarkMode && styles.darkHeaderTitle]}>
+            Hasta Detayları
+          </Text>
+        </View>
+
+        {/* Sağ: Kaydet Butonu */}
         <TouchableOpacity 
           onPress={handleSave} 
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          style={[styles.headerRightButton, loading && styles.headerRightButtonDisabled]}
           disabled={loading}
         >
-          <Text style={styles.saveButtonText}>
-            {loading ? 'Kaydediliyor...' : 'Kaydet'}
+          <Text style={[styles.headerRightIcon, loading && styles.headerRightIconDisabled]}>
+            {loading ? '⏳' : '💾'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -317,58 +329,89 @@ export const PatientDetailScreen: React.FC<PatientDetailScreenProps> = ({
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  // SafeArea - iPhone notch uyumluluğu
+  safeContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
   },
-  darkContainer: {
-    backgroundColor: '#1a1a1a',
+  darkSafeContainer: {
+    backgroundColor: '#0f172a',
   },
-  header: {
+  
+  // Modern Fixed Header
+  fixedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
+    zIndex: 100,
   },
   darkHeader: {
-    backgroundColor: '#333',
-    borderBottomColor: '#555',
+    backgroundColor: '#1e293b',
+    borderBottomColor: '#475569',
   },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  
+  // Sol Geri Butonu
+  headerLeftButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    minWidth: 40,
+    alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '500',
+  headerLeftIcon: {
+    fontSize: 20,
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  
+  // Orta Başlık Alanı
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: '#1e293b',
+    textAlign: 'center',
   },
-  saveButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  darkHeaderTitle: {
+    color: '#f1f5f9',
+  },
+  
+  // Sağ Kaydet Butonu
+  headerRightButton: {
+    padding: 8,
     borderRadius: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    minWidth: 40,
+    alignItems: 'center',
   },
-  saveButtonDisabled: {
-    backgroundColor: '#999',
+  headerRightButtonDisabled: {
+    backgroundColor: 'rgba(156, 163, 175, 0.1)',
   },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
+  headerRightIcon: {
+    fontSize: 18,
+    color: '#10b981',
     fontWeight: '600',
+  },
+  headerRightIconDisabled: {
+    color: '#9ca3af',
   },
   content: {
     flex: 1,

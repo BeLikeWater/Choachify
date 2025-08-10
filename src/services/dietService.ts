@@ -114,7 +114,7 @@ export class DietService {
     }
   }
 
-  // Belirli hasta için diyet planlarını getirme
+  // Belirli hasta için diyet planlarını getirme (Patient ID ile)
   static async getDietPlansByPatient(patientId: string): Promise<DietPlan[]> {
     try {
       console.log('Fetching diet plans for patient:', patientId);
@@ -143,6 +143,86 @@ export class DietService {
       return dietPlans;
     } catch (error) {
       console.error('Hasta diyet planları getirilirken hata oluştu:', error);
+      throw error;
+    }
+  }
+
+  // User email ile diyet planlarını getirme (Hasta login için)
+  static async getDietPlansByPatientId(userId: string): Promise<DietPlan[]> {
+    try {
+      console.log('Fetching diet plans by user ID:', userId);
+      
+      // Önce user'ın email'ini al
+      const userRef = collection(db, 'users');
+      const userQuery = query(userRef, where('id', '==', userId));
+      const userSnapshot = await getDocs(userQuery);
+      
+      if (userSnapshot.empty) {
+        console.log('User not found:', userId);
+        return [];
+      }
+      
+      const userData = userSnapshot.docs[0].data();
+      const userEmail = userData.email;
+      console.log('Found user email:', userEmail);
+      
+      // Direkt email ile diyet planlarında ara
+      return this.getDietPlansByEmail(userEmail);
+    } catch (error) {
+      console.error('User ID ile diyet planları getirilirken hata oluştu:', error);
+      throw error;
+    }
+  }
+
+  // Email ile diyet planlarını getirme (Direkt email eşleştirme)
+  static async getDietPlansByEmail(email: string): Promise<DietPlan[]> {
+    try {
+      console.log('🔍 Fetching diet plans for email:', email);
+      
+      // Önce tüm diyet planlarını getir ve kontrol et
+      const allDietPlansRef = collection(db, COLLECTION_NAME);
+      const allSnapshot = await getDocs(allDietPlansRef);
+      console.log(`📋 Total diet plans in database: ${allSnapshot.size}`);
+      
+      allSnapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log(`🍽️ Diet Plan: ${data.title}`);
+        console.log(`   - Patient Email: "${data.patientEmail}"`);
+        console.log(`   - Patient ID: "${data.patientId}"`);
+        console.log(`   - Target Email: "${email}"`);
+        console.log(`   - Email Match: ${data.patientEmail === email}`);
+        console.log('---');
+      });
+      
+      // Şimdi where sorgusu ile email eşleştirmesi dene
+      const q = query(
+        collection(db, COLLECTION_NAME), 
+        where('patientEmail', '==', email)
+      );
+      const querySnapshot = await getDocs(q);
+      console.log(`📋 Where query found ${querySnapshot.size} diet plans for email "${email}"`);
+      
+      const dietPlans: DietPlan[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log(`✅ Matched diet plan: ${data.title} for ${data.patientEmail}`);
+        dietPlans.push({
+          id: doc.id,
+          ...data,
+        } as DietPlan);
+      });
+
+      // Client tarafında tarihe göre sırala
+      dietPlans.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB.getTime() - dateA.getTime(); // En yeni önce
+      });
+
+      console.log(`✅ Returning ${dietPlans.length} diet plans for email ${email}`);
+      return dietPlans;
+    } catch (error) {
+      console.error('❌ Email ile diyet planları getirilirken hata oluştu:', error);
       throw error;
     }
   }

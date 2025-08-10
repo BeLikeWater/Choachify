@@ -56,6 +56,7 @@ export interface Patient {
   currentMedications?: string;
   
   // Sistem
+  doctorId?: string; // Hangi doktora bağlı
   createdAt: string;
   updatedAt: string;
   
@@ -150,6 +151,7 @@ export interface DietPlan {
   id: string;
   patientId: string;
   patientName: string; // Cache için hasta adı
+  patientEmail: string; // Hasta email'i (eşleştirme için)
   date: string; // YYYY-MM-DD (hangi gün için)
   title: string; // Plan başlığı
   

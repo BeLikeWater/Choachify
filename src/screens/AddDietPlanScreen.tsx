@@ -9,7 +9,10 @@ import {
   useColorScheme,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
+  Modal,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Patient, DietPlan, DietMeal } from '../types';
 import { DietService } from '../services/dietService';
 
@@ -32,6 +35,7 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
   const [formData, setFormData] = useState({
     patientId: selectedPatient?.id || '',
     patientName: selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : '',
+    patientEmail: selectedPatient?.email || '',
     date: new Date().toISOString().split('T')[0],
     title: '',
     waterTarget: '2500',
@@ -40,6 +44,8 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
     generalNotes: '',
     createdBy: 'Diyetisyen',
   });
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [meals, setMeals] = useState({
     breakfast: { name: 'Kahvaltı', items: [''], notes: '' },
@@ -58,6 +64,7 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
         ...prev,
         patientId: selectedPatient.id,
         patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}`,
+        patientEmail: selectedPatient.email,
         title: `${selectedPatient.firstName} ${selectedPatient.lastName} - Günlük Diyet Planı`,
       }));
     }
@@ -116,6 +123,7 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
       const dietPlanData = {
         patientId: formData.patientId,
         patientName: formData.patientName,
+        patientEmail: formData.patientEmail,
         date: formData.date,
         title: formData.title,
         ...cleanedMeals,
@@ -142,6 +150,7 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
       ...prev,
       patientId: patient.id,
       patientName: `${patient.firstName} ${patient.lastName}`,
+      patientEmail: patient.email,
       title: `${patient.firstName} ${patient.lastName} - Günlük Diyet Planı`,
     }));
     setErrors(prev => ({ ...prev, patient: '' }));
@@ -157,6 +166,12 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
         )
       }
     }));
+    
+    // Eğer son item'a yazı yazılmışsa yeni item ekle
+    const meal = meals[mealKey];
+    if (itemIndex === meal.items.length - 1 && value.trim().length > 0) {
+      addMealItem(mealKey);
+    }
   };
 
   const addMealItem = (mealKey: string) => {
@@ -199,20 +214,36 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
   };
 
   return (
-    <View style={[styles.container, isDarkMode && styles.darkContainer]}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onCancel}>
-          <Text style={styles.backButtonText}>← İptal</Text>
+    <SafeAreaView style={[styles.safeContainer, isDarkMode && styles.darkSafeContainer]}>
+      {/* Fixed Header */}
+      <View style={[styles.fixedHeader, isDarkMode && styles.darkHeader]}>
+        <TouchableOpacity onPress={onCancel} style={styles.headerLeftButton}>
+          <Text style={styles.headerLeftIcon}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={[styles.title, isDarkMode && styles.darkText]}>
-            🥗 Yeni Diyet Planı
+        
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, isDarkMode && styles.darkHeaderTitle]}>
+            Yeni Diyet Planı
           </Text>
-          <Text style={[styles.subtitle, isDarkMode && styles.darkSubtitle]}>
+          <Text style={[styles.headerSubtitle, isDarkMode && styles.darkHeaderSubtitle]}>
             Günlük menü oluşturun
           </Text>
         </View>
+        
+        <TouchableOpacity 
+          onPress={handleSave}
+          style={[styles.headerRightButton, loading && styles.disabledHeaderButton]}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#22c55e" />
+          ) : (
+            <Text style={styles.headerRightText}>Kaydet</Text>
+          )}
+        </TouchableOpacity>
       </View>
+
+      <View style={[styles.container, isDarkMode && styles.darkContainer]}>
 
       <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
         {/* Hasta Seçimi */}
@@ -279,16 +310,22 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
           <View style={styles.row}>
             <View style={styles.halfInput}>
               <Text style={[styles.label, isDarkMode && styles.darkText]}>Tarih *</Text>
-              <TextInput
-                style={[styles.input, isDarkMode && styles.darkInput, errors.date && styles.errorInput]}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={isDarkMode ? '#999' : '#666'}
-                value={formData.date}
-                onChangeText={(text) => {
-                  setFormData(prev => ({ ...prev, date: text }));
-                  setErrors(prev => ({ ...prev, date: '' }));
-                }}
-              />
+              <TouchableOpacity
+                style={[styles.dateSelector, isDarkMode && styles.darkCard, errors.date && styles.errorInput]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={[styles.dateSelectorText, isDarkMode && styles.darkText]}>
+                  {formData.date ? 
+                    new Date(formData.date).toLocaleDateString('tr-TR', { 
+                      day: 'numeric', 
+                      month: 'long', 
+                      year: 'numeric' 
+                    })
+                    : 'Tarih seç'
+                  }
+                </Text>
+                <Text style={styles.chevron}>📅</Text>
+              </TouchableOpacity>
               {errors.date && <Text style={styles.errorText}>{errors.date}</Text>}
             </View>
 
@@ -333,7 +370,7 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
                     onChangeText={(text) => updateMealItem(mealKey, index, text)}
                     multiline
                   />
-                  {meal.items.length > 1 && (
+                  {meal.items.length > 1 && index < meal.items.length - 1 && (
                     <TouchableOpacity
                       style={styles.removeItemButton}
                       onPress={() => removeMealItem(mealKey, index)}
@@ -343,13 +380,6 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
                   )}
                 </View>
               ))}
-              
-              <TouchableOpacity
-                style={styles.addItemButton}
-                onPress={() => addMealItem(mealKey)}
-              >
-                <Text style={styles.addItemText}>+ Yiyecek Ekle</Text>
-              </TouchableOpacity>
               
               <TextInput
                 style={[styles.mealNotesInput, isDarkMode && styles.darkInput]}
@@ -419,76 +449,139 @@ const AddDietPlanScreen: React.FC<AddDietPlanScreenProps> = ({
         </View>
       </ScrollView>
 
-      {/* Action Buttons */}
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.cancelButton, isDarkMode && styles.darkCancelButton]}
-          onPress={onCancel}
-          disabled={loading}
+      {/* Date Picker Modal */}
+      {showDatePicker && (
+        <Modal
+          visible={showDatePicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowDatePicker(false)}
         >
-          <Text style={[styles.cancelButtonText, isDarkMode && styles.darkCancelButtonText]}>
-            İptal
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.saveButton, loading && styles.disabledButton]}
-          onPress={handleSave}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Text style={styles.saveButtonText}>Kaydet</Text>
-          )}
-        </TouchableOpacity>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, isDarkMode && styles.darkModalContent]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, isDarkMode && styles.darkText]}>
+                  Tarih Seçin
+                </Text>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Text style={styles.closeButton}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={formData.date ? new Date(formData.date) : new Date()}
+                mode="date"
+                is24Hour={true}
+                display="spinner"
+                onChange={(event, selectedDate) => {
+                  if (selectedDate) {
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      date: selectedDate.toISOString().split('T')[0] 
+                    }));
+                    setErrors(prev => ({ ...prev, date: '' }));
+                  }
+                  setShowDatePicker(false);
+                }}
+                locale="tr-TR"
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+      
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // SafeArea
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  darkSafeContainer: {
+    backgroundColor: '#0f172a',
+  },
+  
+  // Fixed Header
+  fixedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  darkHeader: {
+    backgroundColor: '#1e293b',
+    borderBottomColor: '#475569',
+  },
+  
+  headerLeftButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  headerLeftIcon: {
+    fontSize: 20,
+    color: '#667eea',
+    fontWeight: '600',
+  },
+  
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  darkHeaderTitle: {
+    color: '#f1f5f9',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  darkHeaderSubtitle: {
+    color: '#94a3b8',
+  },
+  
+  headerRightButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  headerRightText: {
+    fontSize: 16,
+    color: '#22c55e',
+    fontWeight: '600',
+  },
+  disabledHeaderButton: {
+    backgroundColor: 'rgba(156, 163, 175, 0.1)',
+  },
+  
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
   darkContainer: {
     backgroundColor: '#1a1a1a',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  backButton: {
-    padding: 8,
-    minWidth: 60,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#007bff',
-    fontWeight: '600',
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-    marginLeft: -60, // Center alignment compensation
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#212529',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginTop: 2,
   },
   darkText: {
     color: '#ffffff',
@@ -638,18 +731,63 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  addItemButton: {
-    backgroundColor: '#28a745',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+  dateSelector: {
+    backgroundColor: '#ffffff',
+    padding: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
   },
-  addItemText: {
-    color: '#ffffff',
+  dateSelectorText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    color: '#212529',
+  },
+  chevron: {
+    fontSize: 16,
+    color: '#6c757d',
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    margin: 20,
+    minWidth: 300,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  darkModalContent: {
+    backgroundColor: '#2d2d2d',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#212529',
+  },
+  closeButton: {
+    fontSize: 20,
+    color: '#6c757d',
+    padding: 4,
   },
   mealNotesInput: {
     backgroundColor: '#f8f9fa',
@@ -669,45 +807,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  actions: {
-    flexDirection: 'row',
-    padding: 20,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#6c757d',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  darkCancelButton: {
-    backgroundColor: '#495057',
-  },
-  cancelButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  darkCancelButtonText: {
+  darkText: {
     color: '#ffffff',
   },
-  saveButton: {
-    flex: 2,
-    backgroundColor: '#28a745',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  disabledButton: {
-    backgroundColor: '#adb5bd',
-  },
-  saveButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  darkSubtitle: {
+    color: '#adb5bd',
   },
 });
 
